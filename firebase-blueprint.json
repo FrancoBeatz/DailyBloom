@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "A personal journal entry",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Title of the journal entry"
+        },
+        "content": {
+          "type": "string",
+          "description": "Main body content of the journal entry"
+        },
+        "mood": {
+          "type": "string",
+          "enum": [
+            "great",
+            "good",
+            "neutral",
+            "low",
+            "bad"
+          ],
+          "description": "How the user felt when writing"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for categorizing entries"
+        },
+        "is_draft": {
+          "type": "boolean",
+          "description": "Whether this entry is a draft"
+        },
+        "word_count": {
+          "type": "number",
+          "description": "Number of words in the entry"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "UID of the user who created the entry"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the entry was created"
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "authorId",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/journal_entries/{entryId}": {
+      "schema": "JournalEntry",
+      "description": "Collection of journal entries"
+    }
+  }
+}
