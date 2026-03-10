@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -10,9 +11,17 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
+  // Enable CORS for all origins (or you can restrict it to your Vercel URL)
+  app.use(cors());
+  app.use(express.json());
+
   // API routes go here
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  app.get('/api/data', (req, res) => {
+    res.json({ message: 'Hello from the Render backend!', data: [1, 2, 3] });
   });
 
   if (process.env.NODE_ENV !== 'production') {
