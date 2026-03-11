@@ -10,6 +10,7 @@ import { PenLine, Search, Loader2 } from "lucide-react";
 import JournalCard from "../components/journal/JournalCard";
 import DeleteConfirmModal from "../components/journal/DeleteConfirmModal";
 import EmptyState from "../components/dashboard/EmptyState";
+import { handleFirestoreError, OperationType } from "@/lib/firestore-errors";
 
 export default function Journal() {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export default function Journal() {
       orderBy("createdAt", "desc")
     );
 
+    const path = "journal_entries";
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -36,7 +38,7 @@ export default function Journal() {
       setEntries(data);
       setIsLoading(false);
     }, (error) => {
-      console.error("Journal fetch error", error);
+      handleFirestoreError(error, OperationType.LIST, path);
       setIsLoading(false);
     });
 
@@ -46,13 +48,13 @@ export default function Journal() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
+    const path = `journal_entries/${deleteTarget.id}`;
     try {
       await deleteDoc(doc(db, "journal_entries", deleteTarget.id));
       toast.success("Entry deleted");
       setDeleteTarget(null);
     } catch (error) {
-      toast.error("Failed to delete entry");
-      console.error(error);
+      handleFirestoreError(error, OperationType.DELETE, path);
     } finally {
       setIsDeleting(false);
     }

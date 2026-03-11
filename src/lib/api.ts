@@ -2,15 +2,16 @@
  * API configuration and helper functions for connecting to the backend.
  */
 
-// Use the VITE_API_URL if provided, otherwise default to the Render backend URL
-export const API_BASE_URL = process.env.VITE_API_URL || 'https://dailybloom-6y1q.onrender.com';
+// Use the local proxy to avoid CORS issues
+export const API_BASE_URL = window.location.origin;
 
 /**
  * Helper to construct API URLs
  */
 export const getApiUrl = (path: string) => {
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  return `${API_BASE_URL}/api/${cleanPath}`;
+  // Route through our local proxy
+  return `${API_BASE_URL}/api/proxy/${cleanPath}`;
 };
 
 /**
@@ -28,9 +29,18 @@ export const apiFetch = async (path: string, options: RequestInit = {}) => {
       },
     });
 
+    const contentType = response.headers.get('content-type');
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = contentType?.includes('application/json') 
+        ? await response.json() 
+        : { message: `API error: ${response.status}` };
       throw new Error(errorData.message || `API error: ${response.status}`);
+    }
+
+    if (!contentType?.includes('application/json')) {
+      const text = await response.text();
+      const snippet = text.substring(0, 100).replace(/[\n\r]/g, ' ');
+      throw new Error(`API response was not JSON. Received: ${snippet}...`);
     }
 
     return await response.json();

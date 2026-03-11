@@ -7,8 +7,10 @@ import { createPageUrl } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Clock, Hash, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Clock, Hash, Loader2, Sparkles } from "lucide-react";
 import DeleteConfirmModal from "../components/journal/DeleteConfirmModal";
+import { apiFetch } from "@/lib/api";
+import { handleFirestoreError, OperationType } from "@/lib/firestore-errors";
 
 const moodLabels = {
   great: { emoji: "😄", label: "Feeling Great" },
@@ -27,11 +29,33 @@ export default function JournalView() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDelete, setShowDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [summary, setSummary] = useState("");
+  const [isSummarizing, setIsSummarizing] = useState(false);
+
+  const handleSummarize = async () => {
+    if (!entry?.content) return;
+    setIsSummarizing(true);
+    try {
+      const result = await apiFetch('summarize-entry', {
+        method: 'POST',
+        body: JSON.stringify({ content: entry.content }),
+      });
+      if (result.summary) {
+        setSummary(result.summary);
+      }
+    } catch (error) {
+      toast.error("Failed to summarize");
+      console.error(error);
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
 
   useEffect(() => {
     if (!entryId || !user) return;
 
     const fetchEntry = async () => {
+      const path = `journal_entries/${entryId}`;
       try {
         const docRef = doc(db, "journal_entries", entryId);
         const docSnap = await getDoc(docRef);
@@ -48,8 +72,7 @@ export default function JournalView() {
           navigate(createPageUrl("Journal"));
         }
       } catch (error) {
-        console.error("Fetch entry error", error);
-        toast.error("Failed to load entry");
+        handleFirestoreError(error, OperationType.GET, path);
       } finally {
         setIsLoading(false);
       }
@@ -60,13 +83,13 @@ export default function JournalView() {
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    const path = `journal_entries/${entryId}`;
     try {
       await deleteDoc(doc(db, "journal_entries", entryId));
       toast.success("Story deleted");
       navigate(createPageUrl("Journal"));
     } catch (error) {
-      toast.error("Failed to delete entry");
-      console.error(error);
+      handleFirestoreError(error, OperationType.DELETE, path);
     } finally {
       setIsDeleting(false);
     }
@@ -133,10 +156,40 @@ export default function JournalView() {
         </h1>
 
         {/* Mood */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5">
-          <span className="text-xl">{moodData.emoji}</span>
-          <span className="text-sm text-slate-300">{moodData.label}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+            <span className="text-xl">{moodData.emoji}</span>
+            <span className="text-sm text-slate-300">{moodData.label}</span>
+          </div>
+
+          {!summary && (
+            <button
+              onClick={handleSummarize}
+              disabled={isSummarizing}
+              className="flex items-center gap-2 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors disabled:opacity-50"
+            >
+              {isSummarizing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              Generate AI Summary
+            </button>
+          )}
         </div>
+
+        {summary && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative p-5 rounded-2xl bg-gradient-to-br from-teal-500/10 to-emerald-500/10 border border-teal-500/20"
+          >
+            <Sparkles className="absolute -top-2 -right-2 w-5 h-5 text-teal-400" />
+            <p className="text-sm italic text-teal-100/90 leading-relaxed">
+              "{summary}"
+            </p>
+          </motion.div>
+        )}
 
         {/* Content */}
         <div className="glass rounded-2xl p-6 sm:p-8">

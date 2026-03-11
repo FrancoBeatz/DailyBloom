@@ -6,10 +6,12 @@ import { useAuth } from "@/lib/AuthContext";
 import { createPageUrl } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowLeft, Save, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, FileText, Loader2, Sparkles } from "lucide-react";
 import MoodSelector from "../components/journal/MoodSelector";
 import TagInput from "../components/journal/TagInput";
 import CharacterProgressBar from "../components/journal/CharacterProgressBar";
+import { apiFetch } from "@/lib/api";
+import { handleFirestoreError, OperationType } from "@/lib/firestore-errors";
 
 const DRAFT_KEY = "mindvault_draft";
 
@@ -21,8 +23,34 @@ export default function JournalEditor() {
   const [mood, setMood] = useState("");
   const [tags, setTags] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const autoSaveTimer = useRef(null);
+
+  const handleAnalyzeMood = async () => {
+    if (!content.trim()) {
+      toast.error("Write something first to analyze your mood");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const result = await apiFetch('analyze-mood', {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      });
+      
+      if (result.mood) {
+        setMood(result.mood);
+        toast.success(`AI suggests your mood is: ${result.mood}`);
+      }
+    } catch (error) {
+      toast.error("Failed to analyze mood");
+      console.error(error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Load draft on mount
   useEffect(() => {
@@ -68,8 +96,9 @@ export default function JournalEditor() {
     }
 
     setIsSaving(true);
+    const path = "journal_entries";
     try {
-      await addDoc(collection(db, "journal_entries"), {
+      await addDoc(collection(db, path), {
         title: title.trim(),
         content: content.trim(),
         mood: mood || "neutral",
@@ -84,8 +113,7 @@ export default function JournalEditor() {
       toast.success("Story saved!");
       navigate(createPageUrl("Journal"));
     } catch (error) {
-      toast.error("Failed to save entry");
-      console.error(error);
+      handleFirestoreError(error, OperationType.CREATE, path);
     } finally {
       setIsSaving(false);
     }
@@ -150,9 +178,23 @@ export default function JournalEditor() {
 
         {/* Mood */}
         <div className="glass rounded-xl p-4">
-          <label className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3 block">
-            How are you feeling?
-          </label>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block">
+              How are you feeling?
+            </label>
+            <button
+              onClick={handleAnalyzeMood}
+              disabled={isAnalyzing || !content.trim()}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-teal-400 hover:text-teal-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {isAnalyzing ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Sparkles className="w-3 h-3" />
+              )}
+              Analyze with AI
+            </button>
+          </div>
           <MoodSelector value={mood} onChange={setMood} />
         </div>
 

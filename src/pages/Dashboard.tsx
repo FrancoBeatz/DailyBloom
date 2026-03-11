@@ -17,10 +17,30 @@ export default function Dashboard() {
   const [backendStatus, setBackendStatus] = React.useState<'loading' | 'online' | 'offline'>('loading');
 
   React.useEffect(() => {
-    // Check backend health
-    apiFetch('health')
-      .then(() => setBackendStatus('online'))
-      .catch(() => setBackendStatus('offline'));
+    // Check backend health - try both common patterns
+    const checkHealth = async () => {
+      try {
+        // Try /api/health first (standard for Express)
+        await apiFetch('api/health');
+        setBackendStatus('online');
+      } catch (err) {
+        try {
+          // Try /health
+          await apiFetch('health');
+          setBackendStatus('online');
+        } catch (err2) {
+          try {
+            // Try root /
+            await apiFetch('');
+            setBackendStatus('online');
+          } catch (err3) {
+            setBackendStatus('offline');
+          }
+        }
+      }
+    };
+
+    checkHealth();
 
     if (!user) return;
 
