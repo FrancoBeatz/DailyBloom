@@ -30,8 +30,8 @@ async function startServer() {
     res.json({ status: 'ok', message: 'Local fallback for proxy health', target: RENDER_BACKEND_URL });
   });
 
-  // Gemini Mood Analysis - handle both direct and proxied paths
-  app.post(['/api/analyze-mood', '/api/proxy/analyze-mood'], async (req, res) => {
+  // Gemini Mood Analysis - handle multiple path variations for flexibility
+  app.post(['/analyze-mood', '/api/analyze-mood', '/api/proxy/analyze-mood'], async (req, res) => {
     const { content } = req.body;
     if (!content) {
       return res.status(400).json({ error: 'Content is required' });
@@ -64,7 +64,7 @@ async function startServer() {
   });
 
   // Gemini Journal Summarization
-  app.post(['/api/summarize-entry', '/api/proxy/summarize-entry'], async (req, res) => {
+  app.post(['/summarize-entry', '/api/summarize-entry', '/api/proxy/summarize-entry'], async (req, res) => {
     const { content } = req.body;
     if (!content) {
       return res.status(400).json({ error: 'Content is required' });
@@ -93,7 +93,12 @@ async function startServer() {
   });
 
   app.get('/api/debug-proxy', (req, res) => {
-    res.json({ target: RENDER_BACKEND_URL });
+    res.json({ 
+      target: RENDER_BACKEND_URL,
+      env: process.env.NODE_ENV,
+      port: PORT,
+      headers: req.headers
+    });
   });
 
   // Proxy requests to the Render backend to avoid CORS issues in the browser
