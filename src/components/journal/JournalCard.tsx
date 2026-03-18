@@ -20,6 +20,11 @@ interface JournalCardProps {
 }
 
 export default function JournalCard({ entry, index, onDelete }: JournalCardProps) {
+  // Handle both Firebase (seconds) and Supabase (ISO string) dates
+  const entryDate = entry.created_at ? new Date(entry.created_at) : 
+                   entry.createdAt?.seconds ? new Date(entry.createdAt.seconds * 1000) : 
+                   new Date();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -46,7 +51,7 @@ export default function JournalCard({ entry, index, onDelete }: JournalCardProps
 
         {entry.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {entry.tags.slice(0, 3).map((tag) => (
+            {entry.tags.slice(0, 3).map((tag: string) => (
               <span
                 key={tag}
                 className="text-[10px] px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-400/70 font-medium"
@@ -65,7 +70,7 @@ export default function JournalCard({ entry, index, onDelete }: JournalCardProps
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <Clock className="w-3 h-3" />
-            {format(new Date(entry.createdAt?.seconds * 1000), "MMM d, yyyy")}
+            {format(entryDate, "MMM d, yyyy")}
             {entry.word_count > 0 && (
               <span className="ml-2">{entry.word_count} words</span>
             )}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React from "react";
+import { Link } from "react-router-dom";
 import { createPageUrl } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
@@ -19,12 +19,22 @@ const navItems = [
   { name: "Write", icon: PenLine, page: "JournalEditor" },
 ];
 
-export default function Sidebar({ currentPage, collapsed, onToggle }) {
+interface SidebarProps {
+  currentPage: string;
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ currentPage, collapsed, onToggle }: SidebarProps) {
   const { user, logout } = useAuth();
 
-  const initials = user?.displayName
-    ? user.displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "MV";
+  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+  const initials = displayName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <motion.aside
@@ -96,7 +106,7 @@ export default function Sidebar({ currentPage, collapsed, onToggle }) {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-200 truncate">
-                {user?.displayName || "User"}
+                {displayName}
               </p>
               <p className="text-xs text-slate-500 truncate">{user?.email}</p>
             </div>

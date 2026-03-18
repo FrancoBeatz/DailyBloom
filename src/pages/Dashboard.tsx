@@ -1,68 +1,54 @@
 import React from "react";
-import { db } from "@/firebase";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { supabase } from "@/supabase";
 import { useAuth } from "@/lib/AuthContext";
-import { apiFetch } from "@/lib/api";
 import GreetingHero from "../components/dashboard/GreetingHero";
 import StatsGrid from "../components/dashboard/StatsGrid";
 import RecentEntries from "../components/dashboard/RecentEntries";
 import EmptyState from "../components/dashboard/EmptyState";
 import MoodChart from "../components/dashboard/MoodChart";
-import { Loader2, Server, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [entries, setEntries] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [backendStatus, setBackendStatus] = React.useState<'loading' | 'online' | 'offline'>('loading');
 
   React.useEffect(() => {
-    // Check backend health - try both common patterns
-    const checkHealth = async () => {
-      try {
-        // Try /api/health first (standard for Express)
-        await apiFetch('api/health');
-        setBackendStatus('online');
-      } catch (err) {
-        try {
-          // Try /health
-          await apiFetch('health');
-          setBackendStatus('online');
-        } catch (err2) {
-          try {
-            // Try root /
-            await apiFetch('');
-            setBackendStatus('online');
-          } catch (err3) {
-            setBackendStatus('offline');
-          }
-        }
-      }
-    };
-
-    checkHealth();
-
     if (!user) return;
 
-    const q = query(
-      collection(db, "journal_entries"),
-      where("authorId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+    const fetchEntries = async () => {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('author_id', user.id)
+        .order('created_at', { ascending: false });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setEntries(data);
+      if (error) {
+        console.error("Dashboard fetch error", error);
+      } else {
+        setEntries(data || []);
+      }
       setIsLoading(false);
-    }, (error) => {
-      console.error("Dashboard fetch error", error);
-      setIsLoading(false);
-    });
+    };
 
-    return unsubscribe;
+    fetchEntries();
+
+    // Subscribe to changes
+    const subscription = supabase
+      .channel('journal_entries_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'journal_entries',
+        filter: `author_id=eq.${user.id}`
+      }, () => {
+        fetchEntries();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [user]);
 
   if (isLoading) {
@@ -76,17 +62,10 @@ export default function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <GreetingHero userName={user?.displayName} />
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium ${
-          backendStatus === 'online' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-          backendStatus === 'offline' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-          'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
-        }`}>
-          <Server className="w-3.5 h-3.5" />
-          <span>Backend: {backendStatus.charAt(0).toUpperCase() + backendStatus.slice(1)}</span>
-          {backendStatus === 'online' ? <CheckCircle2 className="w-3 h-3" /> : 
-           backendStatus === 'offline' ? <XCircle className="w-3 h-3" /> : 
-           <Loader2 className="w-3 h-3 animate-spin" />}
+        <GreetingHero userName={user?.user_metadata?.full_name || user?.email?.split('@')[0]} />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/20 bg-teal-500/10 text-teal-400 text-xs font-medium">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>AI Powered Diary</span>
         </div>
       </div>
       <StatsGrid entries={entries} />

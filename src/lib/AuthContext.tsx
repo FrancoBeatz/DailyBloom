@@ -1,13 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { auth } from '@/firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { supabase } from '@/supabase';
 import { toast } from 'sonner';
 
 const AuthContext = createContext({
   user: null,
   loading: true,
   isLoggingIn: false,
-  login: async () => {},
+  login: async (email, password) => {},
+  signup: async (email, password, fullName) => {},
   logout: async () => {},
 });
 
@@ -17,33 +17,58 @@ export const AuthProvider = ({ children }) => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    // Get initial session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setLoading(false);
+    };
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
       setLoading(false);
     });
-    return unsubscribe;
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async () => {
-    if (isLoggingIn) return;
+  const login = async (email, password) => {
     setIsLoggingIn(true);
-    const provider = new GoogleAuthProvider();
     try {
-      // Ensure persistence is set
-      await setPersistence(auth, browserLocalPersistence);
-      await signInWithPopup(auth, provider);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      toast.success("Welcome back!");
     } catch (error) {
-      // Ignore cancellation errors
-      if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
-        return;
-      }
-      
-      if (error.code === 'auth/network-request-failed') {
-        toast.error("Network error. Please check your connection or ad-blocker.");
-      } else {
-        toast.error("Login failed. Please try again.");
-      }
+      toast.error(error.message || "Login failed. Please check your credentials.");
       console.error("Login failed", error);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const signup = async (email, password, fullName) => {
+    setIsLoggingIn(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+      if (error) throw error;
+      toast.success("Check your email for confirmation!");
+    } catch (error) {
+      toast.error(error.message || "Signup failed. Please try again.");
+      console.error("Signup failed", error);
     } finally {
       setIsLoggingIn(false);
     }
@@ -51,14 +76,15 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully.");
     } catch (error) {
       console.error("Logout failed", error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isLoggingIn, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

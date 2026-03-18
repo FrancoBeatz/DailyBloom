@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { db } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "@/supabase";
 import { useAuth } from "@/lib/AuthContext";
 import { createPageUrl } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -10,8 +9,7 @@ import { ArrowLeft, Save, FileText, Loader2, Sparkles } from "lucide-react";
 import MoodSelector from "../components/journal/MoodSelector";
 import TagInput from "../components/journal/TagInput";
 import CharacterProgressBar from "../components/journal/CharacterProgressBar";
-import { apiFetch } from "@/lib/api";
-import { handleFirestoreError, OperationType } from "@/lib/firestore-errors";
+import { GoogleGenAI } from "@google/genai";
 
 const DRAFT_KEY = "mindvault_draft";
 
@@ -35,14 +33,24 @@ export default function JournalEditor() {
 
     setIsAnalyzing(true);
     try {
-      const result = await apiFetch('analyze-mood', {
-        method: 'POST',
-        body: JSON.stringify({ content }),
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+      const prompt = `Analyze the mood of the following journal entry. Return ONLY one of these words: great, good, neutral, low, bad.
+      
+      Entry: "${content}"`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
       
-      if (result.mood) {
-        setMood(result.mood);
-        toast.success(`AI suggests your mood is: ${result.mood}`);
+      const moodResult = response.text?.trim().toLowerCase();
+      const validMoods = ["great", "good", "neutral", "low", "bad"];
+      
+      if (moodResult && validMoods.includes(moodResult)) {
+        setMood(moodResult);
+        toast.success(`AI suggests your mood is: ${moodResult}`);
+      } else {
+        toast.error("AI couldn't determine a clear mood");
       }
     } catch (error) {
       toast.error("Failed to analyze mood");
@@ -96,24 +104,27 @@ export default function JournalEditor() {
     }
 
     setIsSaving(true);
-    const path = "journal_entries";
     try {
-      await addDoc(collection(db, path), {
-        title: title.trim(),
-        content: content.trim(),
-        mood: mood || "neutral",
-        tags,
-        is_draft: false,
-        word_count: wordCount,
-        authorId: user.uid,
-        createdAt: serverTimestamp(),
-      });
+      const { error } = await supabase
+        .from('journal_entries')
+        .insert({
+          title: title.trim(),
+          content: content.trim(),
+          mood: mood || "neutral",
+          tags,
+          is_draft: false,
+          word_count: wordCount,
+          author_id: user.id,
+        });
+
+      if (error) throw error;
 
       localStorage.removeItem(DRAFT_KEY);
       toast.success("Story saved!");
       navigate(createPageUrl("Journal"));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, path);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save entry");
+      console.error(error);
     } finally {
       setIsSaving(false);
     }

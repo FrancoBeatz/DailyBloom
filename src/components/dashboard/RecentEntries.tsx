@@ -13,7 +13,7 @@ const moodEmoji = {
   bad: "😢",
 };
 
-export default function RecentEntries({ entries }) {
+export default function RecentEntries({ entries }: { entries: any[] }) {
   const recent = entries.slice(0, 5);
 
   return (
@@ -34,34 +34,40 @@ export default function RecentEntries({ entries }) {
       </div>
 
       <div className="divide-y divide-white/5">
-        {recent.map((entry, i) => (
-          <Link
-            key={entry.id}
-            to={createPageUrl(`JournalView?id=${entry.id}`)}
-            className="flex items-center gap-4 px-5 sm:px-6 py-4 hover:bg-white/[0.02] transition-colors group"
-          >
-            <div className="text-xl flex-shrink-0">
-              {moodEmoji[entry.mood] || "📝"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-200 truncate group-hover:text-teal-300 transition-colors">
-                {entry.title}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <Clock className="w-3 h-3 text-slate-500" />
-                <span className="text-xs text-slate-500">
-                  {format(new Date(entry.createdAt?.seconds * 1000), "MMM d, yyyy")}
-                </span>
-                {entry.word_count > 0 && (
-                  <span className="text-xs text-slate-600">
-                    · {entry.word_count} words
-                  </span>
-                )}
+        {recent.map((entry) => {
+          const entryDate = entry.created_at ? new Date(entry.created_at) : 
+                           entry.createdAt?.seconds ? new Date(entry.createdAt.seconds * 1000) : 
+                           new Date();
+          
+          return (
+            <Link
+              key={entry.id}
+              to={createPageUrl(`JournalView?id=${entry.id}`)}
+              className="flex items-center gap-4 px-5 sm:px-6 py-4 hover:bg-white/[0.02] transition-colors group"
+            >
+              <div className="text-xl flex-shrink-0">
+                {moodEmoji[entry.mood] || "📝"}
               </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-teal-400 transition-colors flex-shrink-0" />
-          </Link>
-        ))}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-200 truncate group-hover:text-teal-300 transition-colors">
+                  {entry.title}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Clock className="w-3 h-3 text-slate-500" />
+                  <span className="text-xs text-slate-500">
+                    {format(entryDate, "MMM d, yyyy")}
+                  </span>
+                  {entry.word_count > 0 && (
+                    <span className="text-xs text-slate-600">
+                      · {entry.word_count} words
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-teal-400 transition-colors flex-shrink-0" />
+            </Link>
+          );
+        })}
       </div>
     </motion.div>
   );

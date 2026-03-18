@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { db } from "@/firebase";
-import { doc, getDoc, deleteDoc } from "firebase/firestore";
+import { useNavigate, useParams } from "react-router-dom";
+import { supabase } from "@/supabase";
 import { useAuth } from "@/lib/AuthContext";
 import { createPageUrl } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -9,8 +8,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, Clock, Hash, Loader2, Sparkles } from "lucide-react";
 import DeleteConfirmModal from "../components/journal/DeleteConfirmModal";
-import { apiFetch } from "@/lib/api";
-import { handleFirestoreError, OperationType } from "@/lib/firestore-errors";
+import { GoogleGenAI } from "@google/genai";
 
 const moodLabels = {
   great: { emoji: "😄", label: "Feeling Great" },
@@ -36,12 +34,19 @@ export default function JournalView() {
     if (!entry?.content) return;
     setIsSummarizing(true);
     try {
-      const result = await apiFetch('summarize-entry', {
-        method: 'POST',
-        body: JSON.stringify({ content: entry.content }),
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+      const prompt = `Summarize the following journal entry in one short, poetic sentence.
+      
+      Entry: "${entry.content}"`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
-      if (result.summary) {
-        setSummary(result.summary);
+      
+      const summaryResult = response.text?.trim();
+      if (summaryResult) {
+        setSummary(summaryResult);
       }
     } catch (error) {
       toast.error("Failed to summarize");
@@ -55,24 +60,24 @@ export default function JournalView() {
     if (!entryId || !user) return;
 
     const fetchEntry = async () => {
-      const path = `journal_entries/${entryId}`;
       try {
-        const docRef = doc(db, "journal_entries", entryId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.authorId !== user.uid) {
-            toast.error("You cannot see this");
-            navigate(createPageUrl("Journal"));
-            return;
-          }
-          setEntry({ id: docSnap.id, ...data });
-        } else {
-          toast.error("Story not found");
+        const { data, error } = await supabase
+          .from('journal_entries')
+          .select('*')
+          .eq('id', entryId)
+          .single();
+
+        if (error) throw error;
+
+        if (data.author_id !== user.id) {
+          toast.error("You cannot see this");
           navigate(createPageUrl("Journal"));
+          return;
         }
-      } catch (error) {
-        handleFirestoreError(error, OperationType.GET, path);
+        setEntry(data);
+      } catch (error: any) {
+        toast.error(error.message || "Story not found");
+        navigate(createPageUrl("Journal"));
       } finally {
         setIsLoading(false);
       }
@@ -83,13 +88,18 @@ export default function JournalView() {
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    const path = `journal_entries/${entryId}`;
     try {
-      await deleteDoc(doc(db, "journal_entries", entryId));
+      const { error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', entryId);
+
+      if (error) throw error;
+      
       toast.success("Story deleted");
       navigate(createPageUrl("Journal"));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete entry");
     } finally {
       setIsDeleting(false);
     }
@@ -143,7 +153,7 @@ export default function JournalView() {
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
           <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
-            {format(new Date(entry.createdAt?.seconds * 1000), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+            {format(new Date(entry.created_at), "EEEE, MMMM d, yyyy 'at' h:mm a")}
           </div>
           {entry.word_count > 0 && (
             <span>· {entry.word_count} words</span>
@@ -201,7 +211,7 @@ export default function JournalView() {
         {/* Tags */}
         {entry.tags?.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {entry.tags.map((tag) => (
+            {entry.tags.map((tag: string) => (
               <span
                 key={tag}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-teal-500/10 text-teal-400 text-xs font-medium"

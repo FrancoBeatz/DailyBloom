@@ -2,12 +2,17 @@ import React from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Calendar, Flame, TrendingUp } from "lucide-react";
 
-export default function StatsGrid({ entries }) {
+export default function StatsGrid({ entries }: { entries: any[] }) {
   const totalEntries = entries.length;
 
   // Calculate streak
   const sortedDates = [...new Set(
-    entries.map((e: any) => new Date(e.createdAt?.seconds * 1000).toDateString())
+    entries.map((e: any) => {
+      const date = e.created_at ? new Date(e.created_at) : 
+                   e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : 
+                   new Date();
+      return date.toDateString();
+    })
   )].sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime());
 
   let streak = 0;
@@ -32,7 +37,9 @@ export default function StatsGrid({ entries }) {
   const totalWords = entries.reduce((sum, e: any) => sum + (e.word_count || 0), 0);
 
   const thisMonth = entries.filter((e: any) => {
-    const d = new Date(e.createdAt?.seconds * 1000);
+    const d = e.created_at ? new Date(e.created_at) : 
+              e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : 
+              new Date();
     const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;

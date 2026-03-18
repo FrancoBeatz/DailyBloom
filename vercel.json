@@ -1,22 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/api/proxy/analyze-mood",
-      "destination": "https://dailybloom-6y1q.onrender.com/analyze-mood"
-    },
-    {
-      "source": "/api/proxy/summarize-entry",
-      "destination": "https://dailybloom-6y1q.onrender.com/summarize-entry"
-    },
-    {
-      "source": "/api/proxy/:path*",
-      "destination": "https://dailybloom-6y1q.onrender.com/:path*"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

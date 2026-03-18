@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { db } from "@/firebase";
-import { collection, query, where, orderBy, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { supabase } from "@/supabase";
 import { useAuth } from "@/lib/AuthContext";
 import { createPageUrl } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -10,7 +9,6 @@ import { PenLine, Search, Loader2 } from "lucide-react";
 import JournalCard from "../components/journal/JournalCard";
 import DeleteConfirmModal from "../components/journal/DeleteConfirmModal";
 import EmptyState from "../components/dashboard/EmptyState";
-import { handleFirestoreError, OperationType } from "@/lib/firestore-errors";
 
 export default function Journal() {
   const { user } = useAuth();
@@ -23,50 +21,69 @@ export default function Journal() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, "journal_entries"),
-      where("authorId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
+    const fetchEntries = async () => {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('author_id', user.id)
+        .order('created_at', { ascending: false });
 
-    const path = "journal_entries";
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setEntries(data);
+      if (error) {
+        toast.error("Failed to load journal entries");
+        console.error("Journal fetch error", error);
+      } else {
+        setEntries(data || []);
+      }
       setIsLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
-      setIsLoading(false);
-    });
+    };
 
-    return unsubscribe;
+    fetchEntries();
+
+    // Subscribe to changes
+    const subscription = supabase
+      .channel('journal_entries_list')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'journal_entries',
+        filter: `author_id=eq.${user.id}`
+      }, () => {
+        fetchEntries();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [user]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    const path = `journal_entries/${deleteTarget.id}`;
     try {
-      await deleteDoc(doc(db, "journal_entries", deleteTarget.id));
+      const { error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', deleteTarget.id);
+
+      if (error) throw error;
+      
       toast.success("Entry deleted");
       setDeleteTarget(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete entry");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const filtered = entries.filter((e) => {
+  const filtered = entries.filter((e: any) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
       e.title?.toLowerCase().includes(q) ||
       e.content?.toLowerCase().includes(q) ||
-      e.tags?.some((t) => t.includes(q))
+      e.tags?.some((t: string) => t.toLowerCase().includes(q))
     );
   });
 
@@ -129,9 +146,8 @@ export default function Journal() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((entry: any, i) => {
-            const Card = JournalCard as any;
             return (
-              <Card
+              <JournalCard
                 key={entry.id}
                 entry={entry}
                 index={i}
