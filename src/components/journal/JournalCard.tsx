@@ -19,7 +19,7 @@ interface JournalCardProps {
   onDelete: (entry: any) => void;
 }
 
-export default function JournalCard({ entry, index, onDelete }: JournalCardProps) {
+const JournalCard: React.FC<JournalCardProps> = ({ entry, index, onDelete }) => {
   // Handle both Firebase (seconds) and Supabase (ISO string) dates
   const entryDate = entry.created_at ? new Date(entry.created_at) : 
                    entry.createdAt?.seconds ? new Date(entry.createdAt.seconds * 1000) : 
@@ -94,4 +94,6 @@ export default function JournalCard({ entry, index, onDelete }: JournalCardProps
       </div>
     </motion.div>
   );
-}
+};
+
+export default JournalCard;

@@ -40,8 +40,8 @@ export default function JournalView() {
       Entry: "${entry.content}"`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        model: "gemini-3-flash-preview",
+        contents: prompt,
       });
       
       const summaryResult = response.text?.trim();

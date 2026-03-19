@@ -39,8 +39,8 @@ export default function JournalEditor() {
       Entry: "${content}"`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        model: "gemini-3-flash-preview",
+        contents: prompt,
       });
       
       const moodResult = response.text?.trim().toLowerCase();
