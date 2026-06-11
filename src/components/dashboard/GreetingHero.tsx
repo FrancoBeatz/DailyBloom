@@ -32,8 +32,8 @@ export default function GreetingHero({ userName }) {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="flex items-center gap-2 mb-2"
           >
-            <Icon className={`w-5 h-5 bg-gradient-to-r ${greeting.gradient} text-teal-400`} />
-            <span className="text-sm font-medium text-slate-400">
+            <Icon className="w-5 h-5 text-emerald-400/80 animate-float" />
+            <span className="text-xs sm:text-sm font-medium text-emerald-300/60 uppercase tracking-wider font-sans">
               {currentDate.toLocaleDateString("en-US", {
                 weekday: "long",
                 year: "numeric",
@@ -47,11 +47,11 @@ export default function GreetingHero({ userName }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="text-3xl sm:text-4xl font-bold text-white"
+            className="text-3xl sm:text-4xl md:text-5xl font-serif text-[#f0f4f1] font-medium leading-tight"
           >
             {greeting.text},{" "}
-            <span className="bg-gradient-to-r from-teal-300 to-teal-500 bg-clip-text text-transparent">
-              {firstName}
+            <span className="italic font-normal text-emerald-400 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
+              {firstName} 🌿
             </span>
           </motion.h1>
 
@@ -59,9 +59,9 @@ export default function GreetingHero({ userName }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.5 }}
-            className="mt-2 text-slate-400 text-sm sm:text-base"
+            className="mt-2 text-emerald-100/60 text-sm sm:text-base font-sans"
           >
-            How are you today? Write down your thoughts.
+            How are you today? Let's blossom your thoughts into words.
           </motion.p>
         </div>
 
@@ -69,10 +69,10 @@ export default function GreetingHero({ userName }) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4, duration: 0.5 }}
-          className="flex items-center gap-2 text-xs text-teal-400/60"
+          className="flex items-center gap-2 text-xs text-emerald-400/40"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Your own space</span>
+          <span className="font-sans">Your mindful sanctuary</span>
         </motion.div>
       </div>
     </motion.div>

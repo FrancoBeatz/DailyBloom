@@ -1,97 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+@theme {
+  --font-serif: "Fraunces", Georgia, serif;
+  --font-sans: "Outfit", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-cream-bg: #FFF8E7;
+  --color-cream-primary: #6F4E37;
+  --color-cream-accent: #D4A017;
+  --color-cream-text: #2E2E2E;
+}
+
 :root {
-  --vault-bg: #0a0e17;
-  --vault-surface: #111827;
-  --vault-card: rgba(17, 24, 39, 0.7);
-  --vault-border: rgba(45, 212, 191, 0.1);
-  --vault-teal: #2dd4bf;
-  --vault-teal-dim: rgba(45, 212, 191, 0.15);
-  --vault-purple: #a78bfa;
-  --vault-text: #e2e8f0;
-  --vault-muted: #64748b;
-  --vault-danger: #f87171;
+  --cream-bg: #FFF8E7;
+  --cream-card: #FFFFFF;
+  --cream-primary: #6F4E37;
+  --cream-accent: #D4A017;
+  --cream-text: #2E2E2E;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background: var(--vault-bg);
-  color: var(--vault-text);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  background-color: #FFF8E7;
+  color: #2E2E2E;
   min-height: 100vh;
+  letter-spacing: -0.01em;
 }
 
-/* Glassmorphism utility */
+/* Glassmorphism custom layout styled warm for CreamFlow */
 .glass {
-  background: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(45, 212, 191, 0.08);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(111, 78, 55, 0.08);
 }
 
 .glass-hover:hover {
-  background: rgba(17, 24, 39, 0.8);
-  border-color: rgba(45, 212, 191, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(111, 78, 55, 0.18);
 }
 
-/* Scrollbar */
+/* Scrollbar customized for CreamFlow theme */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(111, 78, 55, 0.02);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(45, 212, 191, 0.2);
-  border-radius: 3px;
+  background: rgba(111, 78, 55, 0.15);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(45, 212, 191, 0.4);
+  background: rgba(111, 78, 55, 0.3);
 }
 
-/* Glow effects */
-.teal-glow {
-  box-shadow: 0 0 40px rgba(45, 212, 191, 0.1), 0 0 80px rgba(45, 212, 191, 0.05);
+/* Shadows and Glows for luxurious feel */
+.cream-shadow {
+  box-shadow: 0 4px 20px -2px rgba(111, 78, 55, 0.05), 0 2px 8px -1px rgba(111, 78, 55, 0.02);
 }
 
-.teal-glow-sm {
-  box-shadow: 0 0 20px rgba(45, 212, 191, 0.08);
+.cream-shadow-lg {
+  box-shadow: 0 20px 40px -4px rgba(111, 78, 55, 0.08), 0 8px 16px -2px rgba(111, 78, 55, 0.04);
 }
 
-/* Custom animations */
+/* Animations */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  50% { transform: translateY(-4px); }
 }
 
 .animate-float {
-  animation: float 3s ease-in-out infinite;
+  animation: float 4s ease-in-out infinite;
 }
 
-.shimmer {
-  background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.05), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s ease-in-out infinite;
-}
-
-/* Prose override for dark mode journal content */
-.journal-content p {
-  color: #cbd5e1;
-  line-height: 1.8;
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* Hide scrollbars */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-
-/* Hide scrollbar for IE, Edge and Firefox */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

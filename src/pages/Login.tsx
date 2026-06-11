@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Brain, Loader2, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Coffee, Loader2, Mail, Lock, User, ArrowRight, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function Login() {
@@ -20,104 +20,116 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-teal-500/[0.03] blur-[150px]" />
+    <div className="min-h-screen bg-[#FFF8E7] flex items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Decorative ambient coffee/cream blobs */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#6F4E37]/[0.05] blur-[150px] pointer-events-none" />
+      <div className="absolute top-10 right-10 w-[200px] h-[200px] rounded-full bg-[#D4A017]/[0.05] blur-[100px] pointer-events-none" />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-center relative z-10 max-w-md w-full"
+        transition={{ duration: 0.5 }}
+        className="relative z-10 max-w-md w-full"
       >
-        <motion.div
-          animate={{ y: [0, -10, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center mb-8 shadow-2xl shadow-teal-500/20"
-        >
-          <Brain className="w-10 h-10 text-white" />
-        </motion.div>
+        <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-[#6F4E37]/10 text-center">
+          
+          {/* Logo Icon */}
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="w-16 h-16 mx-auto rounded-2xl bg-[#6F4E37] flex items-center justify-center mb-6 shadow-lg shadow-[#6F4E37]/20"
+          >
+            <Coffee className="w-8 h-8 text-[#FFF8E7]" />
+          </motion.div>
 
-        <h1 className="text-4xl font-bold text-white mb-2">DailyBloom</h1>
-        <p className="text-slate-400 mb-8 leading-relaxed">
-          {isSignUp ? "Create your account" : "Welcome back to your space"}
-        </p>
+          {/* Title Branding */}
+          <h1 className="text-3xl font-serif font-bold text-[#6F4E37] tracking-tight">CreamFlow</h1>
+          <p className="text-xs uppercase tracking-widest text-[#D4A017] font-semibold mt-1">
+            Flow Through Your Day With Purpose
+          </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-left">
-          {isSignUp && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-400 ml-1">Full Name</label>
+          <p className="text-sm text-[#7A6F62] mt-3 mb-6 font-medium leading-relaxed">
+            {isSignUp ? "Begin your elite personal flow engine" : "Sovereign deployment workspace & cognitive companion"}
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4 text-left">
+            {isSignUp && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#6F4E37] uppercase tracking-wider ml-1">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7A6F62]/60" />
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="E.g. Alexander Mercer"
+                    className="w-full bg-[#FFF8E7]/50 border border-[#6F4E37]/15 rounded-xl py-3 pl-11 pr-4 text-[#2E2E2E] focus:outline-none focus:border-[#6F4E37] focus:ring-1 focus:ring-[#6F4E37] transition-all text-sm font-semibold"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#6F4E37] uppercase tracking-wider ml-1">Email Address</label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7A6F62]/60" />
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Doe"
-                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/50 transition-all"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full bg-[#FFF8E7]/50 border border-[#6F4E37]/15 rounded-xl py-3 pl-11 pr-4 text-[#2E2E2E] focus:outline-none focus:border-[#6F4E37] focus:ring-1 focus:ring-[#6F4E37] transition-all text-sm font-semibold"
                 />
               </div>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-400 ml-1">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/50 transition-all"
-              />
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#6F4E37] uppercase tracking-wider ml-1">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7A6F62]/60" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-[#FFF8E7]/50 border border-[#6F4E37]/15 rounded-xl py-3 pl-11 pr-4 text-[#2E2E2E] focus:outline-none focus:border-[#6F4E37] focus:ring-1 focus:ring-[#6F4E37] transition-all text-sm font-semibold"
+                />
+              </div>
             </div>
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#6F4E37] text-white font-semibold hover:bg-[#5a3e2b] transition-all shadow-md mt-6 text-sm hover:translate-y-[-1px] disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isLoggingIn ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <span>{isSignUp ? "Establish Sovereign Account" : "Access Workspace"}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 border-t border-[#6F4E37]/10 pt-4">
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-[#6F4E37] hover:text-[#D4A017] font-bold text-sm transition-colors cursor-pointer"
+            >
+              {isSignUp ? "Already a premium member? Sign In" : "New to CreamFlow? Register Account"}
+            </button>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-400 ml-1">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/50 transition-all"
-              />
-            </div>
+          <div className="flex items-center justify-center gap-1 mt-6 text-[10px] text-[#7A6F62] font-mono">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#D4A017]" />
+            <span>RSA-2048 Military Enclaved Security Shield</span>
           </div>
-
-          <button
-            type="submit"
-            disabled={isLoggingIn}
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-teal-500 text-white font-semibold hover:bg-teal-400 transition-all shadow-xl shadow-teal-500/20 disabled:opacity-70 disabled:cursor-not-allowed mt-6"
-          >
-            {isLoggingIn ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                {isSignUp ? "Create Account" : "Sign In"}
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="mt-8">
-          <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-teal-500 hover:text-teal-400 font-medium transition-colors"
-          >
-            {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
-          </button>
         </div>
-
-        <p className="mt-8 text-xs text-slate-600">
-          By continuing, you agree to our terms and privacy policy.
-        </p>
       </motion.div>
     </div>
   );

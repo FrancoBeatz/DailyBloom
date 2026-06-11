@@ -7,16 +7,58 @@ import {
   BookOpen,
   PenLine,
   LogOut,
-  Brain,
+  Coffee,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  Briefcase,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import PremiumTooltip from "../PremiumTooltip";
 
 const navItems = [
-  { name: "Home", icon: LayoutDashboard, page: "Dashboard" },
-  { name: "My Diary", icon: BookOpen, page: "Journal" },
-  { name: "Write", icon: PenLine, page: "JournalEditor" },
+  { 
+    name: "Command Hub", 
+    icon: LayoutDashboard, 
+    page: "Dashboard",
+    tooltip: { 
+      title: "Command Hub", 
+      description: "Unified operating screen tracking your active project sprints, goal progress, and workspace metrics.",
+      bestPractice: "Review your focus dashboard first thing in the morning to plan optimal sprints."
+    }
+  },
+  { 
+    name: "Focus Chamber", 
+    icon: Clock, 
+    page: "DailyFocus",
+    tooltip: { 
+      title: "Focus Chamber", 
+      description: "Distraction-free deep work zone equipped with a responsive flow timer synchronised into actual task timelines.",
+      bestPractice: "Work in blocks of 25-50 minutes, then log your focus times to update your actual developer hours."
+    }
+  },
+  { 
+    name: "Developer Matrix", 
+    icon: Briefcase, 
+    page: "DeveloperMatrix",
+    tooltip: { 
+      title: "Developer Matrix", 
+      description: "Engineering and job metrics board. Log coding hours, monitor learning, and track active career logs.",
+      bestPractice: "Keep your study topics structured to present an impeccable progress log and study timeline."
+    }
+  },
+  { 
+    name: "Cognitive Logs", 
+    icon: BookOpen, 
+    page: "Journal",
+    tooltip: { 
+      title: "Cognitive Logs", 
+      description: "Record daily performance milestones, retrospectives, decisions, and psychological flow states.",
+      bestPractice: "Write a short post-work review to log insights and keep your memory pipeline clean."
+    }
+  },
 ];
 
 interface SidebarProps {
@@ -40,82 +82,105 @@ export default function Sidebar({ currentPage, collapsed, onToggle }: SidebarPro
     <motion.aside
       initial={false}
       animate={{ width: collapsed ? 72 : 260 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className="fixed left-0 top-0 h-screen z-50 glass border-r border-white/5 flex flex-col"
+      transition={{ duration: 0.25, ease: "easeInOut" }}
+      className="fixed left-0 top-0 h-screen z-50 bg-white border-r border-[#6F4E37]/15 flex flex-col font-sans shadow-md"
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-white/5">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0">
-          <Brain className="w-4 h-4 text-white" />
+      {/* Brand Logo Section */}
+      <div className="flex items-center gap-3 px-5 h-16 border-b border-[#6F4E37]/10 bg-[#FFF8E7]/40">
+        <div className="w-9 h-9 rounded-xl bg-[#6F4E37] flex items-center justify-center flex-shrink-0 shadow-sm shadow-[#6F4E37]/10">
+          <Coffee className="w-5 h-5 text-white animate-pulse" />
         </div>
         {!collapsed && (
-          <motion.span
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-lg font-bold tracking-tight bg-gradient-to-r from-teal-300 to-teal-500 bg-clip-text text-transparent"
+            className="flex flex-col text-left"
           >
-            DailyBloom
-          </motion.span>
+            <span className="text-base font-serif font-black tracking-tight text-[#6F4E37] flex items-center gap-1">
+              CreamFlow <span className="text-xs text-[#D4A017] tracking-wider font-sans font-bold">SaaS</span>
+            </span>
+            <span className="text-[9px] font-sans font-semibold text-[#7A6F62] tracking-wider">
+              ESTABLISH YOUR DAILY PATH
+            </span>
+          </motion.div>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      {/* Navigation Loop with Premium Tooltips */}
+      <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = currentPage === item.page;
-          return (
+          const iconColor = isActive ? "text-[#6F4E37]" : "text-[#7A6F62] group-hover:text-[#6F4E37]";
+          
+          const linkButton = (
             <Link
-              key={item.page}
               to={createPageUrl(item.page)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative font-sans text-left
                 ${isActive
-                  ? "bg-teal-500/10 text-teal-300"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                  ? "bg-[#6F4E37]/10 text-[#6F4E37] font-bold"
+                  : "text-[#7A6F62] hover:text-[#6F4E37] hover:bg-[#6F4E37]/5"
                 }`}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeNav"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-teal-400 rounded-r-full"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#6F4E37] rounded-r-full"
                 />
               )}
-              <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-teal-400" : ""}`} />
+              <item.icon className={`w-4.5 h-4.5 flex-shrink-0 transition-colors ${iconColor}`} />
               {!collapsed && (
-                <span className="text-sm font-medium">{item.name}</span>
+                <span className="text-xs uppercase tracking-wider font-semibold">{item.name}</span>
               )}
             </Link>
+          );
+
+          if (collapsed) {
+            return (
+              <div key={item.page} className="w-full">
+                <PremiumTooltip content={item.tooltip} position="right">
+                  {linkButton}
+                </PremiumTooltip>
+              </div>
+            );
+          }
+
+          return (
+            <div key={item.page} className="w-full">
+              {linkButton}
+            </div>
           );
         })}
       </nav>
 
-      {/* Bottom section */}
-      <div className="p-3 border-t border-white/5 space-y-2">
+      {/* Sidebar Controls and Profile */}
+      <div className="p-3 border-t border-[#6F4E37]/10 bg-[#FFF8E7]/20 space-y-2">
         {/* Collapse toggle */}
         <button
           onClick={onToggle}
-          className="flex items-center justify-center w-full py-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center w-full py-2 rounded-lg text-[#7A6F62] hover:text-[#6F4E37] hover:bg-[#6F4E37]/5 transition-colors cursor-pointer"
+          title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
 
-        {/* User + Logout */}
-        <div className="flex items-center gap-3 px-2 py-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+        {/* User profile capsule */}
+        <div className="flex items-center gap-2.5 px-2 py-2.5 bg-white border border-[#6F4E37]/10 rounded-2xl shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-[#6F4E37] flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-inner">
             {initials}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-200 truncate">
+              <p className="text-xs font-bold text-[#6F4E37] truncate">
                 {displayName}
               </p>
-              <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+              <p className="text-[9px] text-[#7A6F62] font-mono truncate">{user?.email}</p>
             </div>
           )}
           {!collapsed && (
             <button
               onClick={logout}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="Logout"
+              className="p-1.5 rounded-lg text-[#7A6F62] hover:text-red-500 hover:bg-red-500/5 transition-all cursor-pointer"
+              title="Sign Out of CreamFlow"
             >
               <LogOut className="w-4 h-4" />
             </button>

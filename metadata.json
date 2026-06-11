@@ -1,5 +1,7 @@
 {
-  "name": "DailyBloom",
-  "description": "A friendly place to write down your thoughts and see how you feel every day.",
-  "requestFramePermissions": []
+  "name": "Bloom OS",
+  "description": "Premium Developer Productivity OS, Portfolio milestones tracker, and cognitive focus companion designed to impress tech employers.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

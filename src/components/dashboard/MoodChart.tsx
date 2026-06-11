@@ -2,11 +2,11 @@ import React from "react";
 import { motion } from "framer-motion";
 
 const moods = [
-  { key: "great", emoji: "😄", label: "Great", color: "bg-emerald-500" },
-  { key: "good", emoji: "🙂", label: "Good", color: "bg-teal-500" },
-  { key: "neutral", emoji: "😐", label: "Okay", color: "bg-slate-500" },
-  { key: "low", emoji: "😔", label: "Down", color: "bg-amber-500" },
-  { key: "bad", emoji: "😢", label: "Bad", color: "bg-red-500" },
+  { key: "great", emoji: "🌸", label: "Great", color: "bg-rose-300" },
+  { key: "good", emoji: "🌱", label: "Good", color: "bg-emerald-400" },
+  { key: "neutral", emoji: "🍃", label: "Okay", color: "bg-emerald-600/60" },
+  { key: "low", emoji: "🕯️", label: "Down", color: "bg-amber-400" },
+  { key: "bad", emoji: "🥀", label: "Bad", color: "bg-red-400/80" },
 ];
 
 export default function MoodChart({ entries }) {
@@ -24,7 +24,7 @@ export default function MoodChart({ entries }) {
       transition={{ delay: 0.6, duration: 0.5 }}
       className="glass rounded-2xl p-5 sm:p-6"
     >
-      <h2 className="text-base font-semibold text-white mb-5">How You Feel</h2>
+      <h2 className="text-base font-serif font-semibold text-[#f0f4f1] mb-5">Flow Distribution</h2>
 
       <div className="space-y-3">
         {moods.map((mood) => {
@@ -43,7 +43,7 @@ export default function MoodChart({ entries }) {
                   />
                 </div>
               </div>
-              <span className="text-xs text-slate-400 w-6 text-right">{count}</span>
+              <span className="text-xs text-emerald-100/40 w-6 text-right font-mono">{count}</span>
             </div>
           );
         })}

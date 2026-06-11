@@ -85,11 +85,11 @@ export default function StatsGrid({ entries }: { entries: any[] }) {
           transition={{ delay: 0.1 * i, duration: 0.5 }}
           className="glass rounded-2xl p-4 sm:p-5 glass-hover transition-all duration-300 cursor-default group"
         >
-          <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
-            <stat.icon className={`w-5 h-5 text-teal-400`} />
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+            <stat.icon className="w-5 h-5 text-emerald-400" />
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-white">{stat.value}</p>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">{stat.label}</p>
+          <p className="text-2xl sm:text-3xl font-serif font-semibold text-[#f0f4f1]">{stat.value}</p>
+          <p className="text-xs sm:text-sm text-emerald-100/50 mt-1 font-sans">{stat.label}</p>
         </motion.div>
       ))}
     </div>
