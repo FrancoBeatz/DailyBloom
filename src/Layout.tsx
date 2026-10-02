@@ -1,19 +1,28 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "./components/layout/Sidebar";
 import MobileNav from "./components/layout/MobileNav";
+import TopBar from "./components/layout/TopBar";
+import CommandPalette from "./components/command/CommandPalette";
+import QuickCaptureModal from "./components/command/QuickCaptureModal";
+import { FloatingDock } from "./components/motion/FloatingDock";
 import { useAuth } from "@/lib/AuthContext";
 import Login from "@/pages/Login";
 import { isSandboxActive, setSandboxActive, supabaseUrl } from "@/supabase";
 import { toast } from "sonner";
 import { useProductivity } from "@/lib/ProductivityContext";
-import { ChevronRight, Database, HelpCircle, CheckCircle2, UserCheck, ShieldCheck, HelpCircle as Help } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
-export default function Layout({ children, currentPageName }) {
+export default function Layout({ children, currentPageName }: { children: React.ReactNode; currentPageName: string }) {
   const { user, loading } = useAuth();
   const { preferences, onboardingCompleted, completeOnboarding } = useProductivity();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMd, setIsMd] = useState(false);
   const [showSqlGuide, setShowSqlGuide] = useState(false);
+
+  // Command Palette and Quick Capture States
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
+  const [quickCaptureTab, setQuickCaptureTab] = useState<"task" | "project" | "goal" | "habit" | "learning">("task");
 
   // Onboarding states
   const [onboardStep, setOnboardStep] = useState(1);
@@ -27,9 +36,9 @@ export default function Layout({ children, currentPageName }) {
 
   const getProjectId = () => {
     try {
-      return supabaseUrl.replace('https://', '').split('.')[0];
+      return supabaseUrl.replace("https://", "").split(".")[0];
     } catch {
-      return 'ysnwuehcbvnevuuqcyyx';
+      return "ysnwuehcbvnevuuqcyyx";
     }
   };
 
@@ -40,12 +49,41 @@ export default function Layout({ children, currentPageName }) {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Global Keyboard Shortcuts (⌘K for command palette, C for quick capture)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if typing inside input / textarea
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandOpen((prev) => !prev);
+      } else if (e.key.toLowerCase() === "c" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setQuickCaptureTab("task");
+        setIsQuickCaptureOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleOpenQuickCapture = (tab: "task" | "project" | "goal" | "habit" | "learning" = "task") => {
+    setQuickCaptureTab(tab);
+    setIsQuickCaptureOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FFF8E7] flex items-center justify-center font-sans">
         <div className="text-center space-y-3">
           <div className="w-12 h-12 border-4 border-[#6F4E37]/15 border-t-[#6F4E37] rounded-full animate-spin mx-auto" />
-          <p className="text-xs uppercase tracking-widest text-[#6F4E37] font-semibold">Synergizing CreamFlow Workspace</p>
+          <p className="text-xs uppercase tracking-widest text-[#6F4E37] font-semibold">
+            Connecting CreamFlow Workspace
+          </p>
         </div>
       </div>
     );
@@ -70,18 +108,18 @@ export default function Layout({ children, currentPageName }) {
         toast.warning("Please designate your first focus task.");
         return;
       }
-      setOnboardStep(prev => prev + 1);
+      setOnboardStep((prev) => prev + 1);
     };
 
     const handlePrevStep = () => {
-      setOnboardStep(prev => Math.max(1, prev - 1));
+      setOnboardStep((prev) => Math.max(1, prev - 1));
     };
 
     const toggleGoal = (goal: string) => {
       if (selectedGoals.includes(goal)) {
-        setSelectedGoals(prev => prev.filter(g => g !== goal));
+        setSelectedGoals((prev) => prev.filter((g) => g !== goal));
       } else {
-        setSelectedGoals(prev => [...prev, goal]);
+        setSelectedGoals((prev) => [...prev, goal]);
       }
     };
 
@@ -99,11 +137,12 @@ export default function Layout({ children, currentPageName }) {
       <div className="min-h-screen bg-[#FFF8E7] flex items-center justify-center p-4 sm:p-6 font-sans">
         <div className="absolute inset-0 bg-radial from-[#6F4E37]/[0.05] to-transparent pointer-events-none" />
         <div className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 border border-[#6F4E37]/10 shadow-xl relative z-10">
-          
           {/* Header Progress indicator */}
           <div className="flex items-center justify-between mb-8 border-b border-[#6F4E37]/10 pb-4">
             <div>
-              <span className="text-[10px] uppercase font-bold tracking-widest text-[#D4A017]">Setup Wizard</span>
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#D4A017]">
+                Setup Wizard
+              </span>
               <h2 className="text-xl font-serif font-black text-[#6F4E37]">Setup CreamFlow</h2>
             </div>
             <div className="flex items-center gap-1 font-mono text-[10px] bg-[#6F4E37]/5 px-2.5 py-1 rounded-lg text-[#6F4E37] font-bold">
@@ -118,11 +157,13 @@ export default function Layout({ children, currentPageName }) {
             <div className="space-y-4">
               <div className="space-y-1">
                 <h3 className="text-base font-serif font-bold text-[#6F4E37]">Welcome to CreamFlow</h3>
-                <p className="text-xs text-[#7A6F62]">Please customize your workspace persona. What describes your core focus?</p>
+                <p className="text-xs text-[#7A6F62]">
+                  Please customize your workspace persona. What describes your core focus?
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 pt-2">
-                {["Developer", "Student", "Freelancer", "Entrepreneur", "Professional", "Personal Use"].map(p => (
+                {["Developer", "Student", "Freelancer", "Entrepreneur", "Professional", "Personal Use"].map((p) => (
                   <button
                     key={p}
                     onClick={() => setPersona(p)}
@@ -143,7 +184,9 @@ export default function Layout({ children, currentPageName }) {
             <div className="space-y-4">
               <div className="space-y-1">
                 <h3 className="text-base font-serif font-bold text-[#6F4E37]">Select Workspace Objectives</h3>
-                <p className="text-xs text-[#7A6F62]">Which metrics and targets are you tracking in this campaign?</p>
+                <p className="text-xs text-[#7A6F62]">
+                  Which metrics and targets are you tracking in this campaign?
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 pt-2">
@@ -153,8 +196,8 @@ export default function Layout({ children, currentPageName }) {
                   { id: "Grow Business", icon: "📈" },
                   { id: "Fitness", icon: "💪" },
                   { id: "Personal Productivity", icon: "⏱️" },
-                  { id: "Education", icon: "📚" }
-                ].map(g => {
+                  { id: "Education", icon: "📚" },
+                ].map((g) => {
                   const selected = selectedGoals.includes(g.id);
                   return (
                     <button
@@ -179,11 +222,15 @@ export default function Layout({ children, currentPageName }) {
             <div className="space-y-4">
               <div className="space-y-1">
                 <h3 className="text-base font-serif font-bold text-[#6F4E37]">Launch Your Workspace</h3>
-                <p className="text-xs text-[#7A6F62]">Every SaaS campaign operates within isolated, secure workspaces.</p>
+                <p className="text-xs text-[#7A6F62]">
+                  Every campaign operates within isolated, secure workspaces.
+                </p>
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">Workspace Title</label>
+                <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">
+                  Workspace Title
+                </label>
                 <input
                   type="text"
                   placeholder="E.g. Alexander's HQ, Dev-Arena"
@@ -200,11 +247,15 @@ export default function Layout({ children, currentPageName }) {
             <div className="space-y-4">
               <div className="space-y-1">
                 <h3 className="text-base font-serif font-bold text-[#6F4E37]">Create Key Project Tracker</h3>
-                <p className="text-xs text-[#7A6F62]">Organize tasks, estimations, and achievements inside milestones.</p>
+                <p className="text-xs text-[#7A6F62]">
+                  Organize tasks, estimations, and achievements inside milestones.
+                </p>
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">Project Name</label>
+                <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">
+                  Project Name
+                </label>
                 <input
                   type="text"
                   placeholder="E.g. Portfolio Website, React Masterclass"
@@ -220,12 +271,18 @@ export default function Layout({ children, currentPageName }) {
           {onboardStep === 5 && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <h3 className="text-base font-serif font-bold text-[#6F4E37]">Designate Your First Project Task</h3>
-                <p className="text-xs text-[#7A6F62]">Kickstart the metrics workspace with one actionable sprint objective.</p>
+                <h3 className="text-base font-serif font-bold text-[#6F4E37]">
+                  Designate Your First Project Task
+                </h3>
+                <p className="text-xs text-[#7A6F62]">
+                  Kickstart the metrics workspace with one actionable sprint objective.
+                </p>
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">Task Title</label>
+                <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">
+                  Task Title
+                </label>
                 <input
                   type="text"
                   placeholder="E.g. Refactor API endpoints, Build responsive layout"
@@ -272,20 +329,17 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-[#FFF8E7] relative text-[#2E2E2E]">
-      
       {/* Sandbox/Offline notice bar */}
       {isSandbox && (
         <div className="bg-white border-b border-[#6F4E37]/15 text-[#6F4E37] text-xs py-2 px-4 flex flex-wrap items-center justify-between gap-3 relative z-50 shadow-sm font-sans font-medium">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#D4A017] animate-pulse" />
-            <span>
-              CreamFlow Local Sandbox Mode Active (Local Storage Syncing Securely).
-            </span>
+            <span>CreamFlow Local Sandbox Mode Active (Local Storage Syncing Securely).</span>
           </div>
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowSqlGuide(true)}
-              className="px-2.5 py-1 bg-[#6F4E37]/10 hover:bg-[#6F4E37]/15 text-[#6F4E37] transition-all text-[9px] font-bold rounded-lg uppercase tracking-wider"
+              className="px-2.5 py-1 bg-[#6F4E37]/10 hover:bg-[#6F4E37]/15 text-[#6F4E37] transition-all text-[9px] font-bold rounded-lg uppercase tracking-wider cursor-pointer"
             >
               Examine Supabase SQL
             </button>
@@ -294,7 +348,7 @@ export default function Layout({ children, currentPageName }) {
                 setSandboxActive(false);
                 window.location.reload();
               }}
-              className="px-3 py-1 bg-[#6F4E37] hover:bg-[#5a3e2b] text-white transition-all text-[9px] font-bold rounded-lg uppercase tracking-wider shadow-sm"
+              className="px-3 py-1 bg-[#6F4E37] hover:bg-[#5a3e2b] text-white transition-all text-[9px] font-bold rounded-lg uppercase tracking-wider shadow-sm cursor-pointer"
             >
               Verify Dev Server
             </button>
@@ -368,18 +422,18 @@ CREATE TABLE IF NOT EXISTS public.goals (
               </pre>
             </div>
             <div className="flex justify-between items-center pt-2 gap-3">
-              <button 
+              <button
                 onClick={() => {
                   navigator.clipboard.writeText(`-- Clean CreamFlow tables setup\nCREATE TABLE IF NOT EXISTS public.workspaces (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, name TEXT NOT NULL);`);
                   toast.success("SQL stub schema copied!");
                 }}
-                className="px-4 py-2 bg-[#6F4E37] text-white font-bold rounded-xl text-xs transition hover:bg-[#5a3e2b]"
+                className="px-4 py-2 bg-[#6F4E37] text-white font-bold rounded-xl text-xs transition hover:bg-[#5a3e2b] cursor-pointer"
               >
                 Copy SQL Stub
               </button>
-              <button 
+              <button
                 onClick={() => setShowSqlGuide(false)}
-                className="px-4 py-2 bg-[#FFF8E7] text-[#6F4E37] border border-[#6F4E37]/20 font-bold rounded-xl text-xs transition hover:bg-[#6F4E37]/5"
+                className="px-4 py-2 bg-[#FFF8E7] text-[#6F4E37] border border-[#6F4E37]/20 font-bold rounded-xl text-xs transition hover:bg-[#6F4E37]/5 cursor-pointer"
               >
                 Close Guidance
               </button>
@@ -394,20 +448,55 @@ CREATE TABLE IF NOT EXISTS public.goals (
           currentPage={currentPageName}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onOpenCommandPalette={() => setIsCommandOpen(true)}
+          onOpenQuickCapture={handleOpenQuickCapture}
         />
       </div>
 
-      {/* Mobile nav */}
-      <MobileNav currentPage={currentPageName} />
+      {/* Top bar header */}
+      <div
+        className="transition-all duration-300"
+        style={{ marginLeft: isMd ? (sidebarCollapsed ? 72 : 260) : 0 }}
+      >
+        <TopBar
+          onOpenCommand={() => setIsCommandOpen(true)}
+          onOpenQuickCapture={handleOpenQuickCapture}
+        />
+      </div>
+
+      {/* Mobile bottom nav */}
+      <MobileNav
+        currentPage={currentPageName}
+        onOpenCommandPalette={() => setIsCommandOpen(true)}
+        onOpenQuickCapture={handleOpenQuickCapture}
+      />
+
+      {/* Floating Action Dock (React Bits inspired) */}
+      <FloatingDock
+        onOpenCommand={() => setIsCommandOpen(true)}
+        onOpenQuickCapture={handleOpenQuickCapture}
+      />
+
+      {/* Command Palette (⌘K) */}
+      <CommandPalette
+        isOpen={isCommandOpen}
+        onClose={() => setIsCommandOpen(false)}
+        onOpenQuickCapture={handleOpenQuickCapture}
+      />
+
+      {/* Quick Capture Modal (C) */}
+      <QuickCaptureModal
+        isOpen={isQuickCaptureOpen}
+        initialTab={quickCaptureTab}
+        onClose={() => setIsQuickCaptureOpen(false)}
+      />
 
       {/* Main content wrapper */}
       <main
-        className="relative z-10 transition-all duration-300 min-h-screen"
+        className="relative z-10 transition-all duration-300 min-h-[calc(100vh-64px)] pb-28 md:pb-24"
         style={{ marginLeft: isMd ? (sidebarCollapsed ? 72 : 260) : 0 }}
       >
-        <div className="pt-16 pb-20 md:pt-0 md:pb-0 min-h-screen">
-          {children}
-        </div>
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   );

@@ -11,19 +11,21 @@ import {
   ChevronRight,
   TrendingUp,
   Award,
-  BookOpenCheck,
   Plus,
   Trash2,
   Calendar,
-  DollarSign,
   Cpu,
   Bookmark,
   Coffee,
   CheckCircle2,
-  UserCheck
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import PremiumTooltip from "@/components/PremiumTooltip";
+import { SpotlightCard } from "@/components/motion/SpotlightCard";
+import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
+import { AnimatedCheckbox } from "@/components/motion/AnimatedCheckbox";
+import { ShimmerText, MagneticButton } from "@/components/motion/MagneticButton";
+import { audioService } from "@/lib/AudioService";
 
 interface JobApplication {
   id: string;
@@ -47,45 +49,44 @@ export default function DeveloperMatrix() {
     tasks,
     projects,
     developerMetrics,
+    learningTopics,
     updateDeveloperHours,
     updateTask,
     deleteProject,
     addProject,
-    addTask
+    addTask,
+    addLearningTopic,
+    updateLearningHours,
+    deleteLearningTopic,
   } = useProductivity();
 
   // Sub-tabs
-  const [activeTab, setActiveTab] = useState<"overview" | "projects" | "jobs" | "interviews">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "projects" | "learning" | "jobs">("overview");
 
-  // Local persisted states for Job applications and Interview Prep (encapsulated for CreamFlow)
+  // Persisted state for Job Applications
   const [jobApplications, setJobApplications] = useState<JobApplication[]>(() => {
-    const val = localStorage.getItem("creamflow_matrix_jobs");
-    return val ? JSON.parse(val) : [];
-  });
-
-  const [interviewPreps, setInterviewPreps] = useState<InterviewPrep[]>(() => {
-    const val = localStorage.getItem("creamflow_matrix_preps");
-    return val ? JSON.parse(val) : [];
+    try {
+      const val = localStorage.getItem("creamflow_matrix_jobs");
+      return val ? JSON.parse(val) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
     localStorage.setItem("creamflow_matrix_jobs", JSON.stringify(jobApplications));
   }, [jobApplications]);
 
-  useEffect(() => {
-    localStorage.setItem("creamflow_matrix_preps", JSON.stringify(interviewPreps));
-  }, [interviewPreps]);
-
-  // Form states
-  const [submittingHours, setSubmittingHours] = useState(false);
+  // Hours logging form
   const [addCodingHours, setAddCodingHours] = useState(1);
   const [addLearningHours, setAddLearningHours] = useState(1);
 
-  // Project creator states
+  // Project form states
   const [showProjForm, setShowProjForm] = useState(false);
   const [projTitle, setProjTitle] = useState("");
   const [projOverview, setProjOverview] = useState("");
   const [projTargetDate, setProjTargetDate] = useState("");
+  const [projMilestones, setProjMilestones] = useState("");
 
   // Job form states
   const [showJobForm, setShowJobForm] = useState(false);
@@ -94,30 +95,41 @@ export default function DeveloperMatrix() {
   const [jobSalary, setJobSalary] = useState("");
   const [jobNotes, setJobNotes] = useState("");
 
-  // Interview study form states
-  const [showIntForm, setShowIntForm] = useState(false);
-  const [intTopic, setIntTopic] = useState("");
-  const [intType, setIntType] = useState<InterviewPrep["type"]>("Algorithms");
-  const [intStatus, setIntStatus] = useState<InterviewPrep["status"]>("Review Required");
-  const [intNotes, setIntNotes] = useState("");
-
-  // Quick project task line
-  const [projectTaskInput, setProjectTaskInput] = useState<{ [projId: string]: string }>({});
+  // Learning form states
+  const [showLearnForm, setShowLearnForm] = useState(false);
+  const [learnTitle, setLearnTitle] = useState("");
+  const [learnDesc, setLearnDesc] = useState("");
+  const [learnTargetHours, setLearnTargetHours] = useState(10);
 
   const handleHourSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateDeveloperHours(Number(addCodingHours), Number(addLearningHours));
+    audioService.playSuccessChime();
     setAddCodingHours(1);
     setAddLearningHours(1);
   };
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projTitle.trim()) return;
-    addProject(projTitle.trim(), projOverview.trim(), projTargetDate, ["Initial Spec Map", "Production Run v1"]);
+    const ms = projMilestones
+      .split("\n")
+      .map((m) => m.trim())
+      .filter(Boolean);
+
+    await addProject({
+      name: projTitle.trim(),
+      description: projOverview.trim() || undefined,
+      deadline: projTargetDate || undefined,
+      milestones: ms.length > 0 ? ms : undefined,
+    });
+
+    audioService.playSuccessChime();
+    toast.success(`Project "${projTitle}" registered`);
     setProjTitle("");
     setProjOverview("");
     setProjTargetDate("");
+    setProjMilestones("");
     setShowProjForm(false);
   };
 
@@ -125,645 +137,594 @@ export default function DeveloperMatrix() {
     e.preventDefault();
     if (!jobCompany.trim() || !jobRole.trim()) return;
     const newJob: JobApplication = {
-      id: "job_" + Math.random().toString(36).substring(2, 9),
+      id: `job-${Date.now()}`,
       company: jobCompany.trim(),
       role: jobRole.trim(),
       stage: "Applied",
-      salary: jobSalary.trim(),
-      notes: jobNotes.trim()
+      salary: jobSalary.trim() || "Competitive",
+      notes: jobNotes.trim(),
     };
-    setJobApplications(prev => [newJob, ...prev]);
+    setJobApplications((prev) => [newJob, ...prev]);
+    audioService.playSuccessChime();
+    toast.success(`Application for ${jobCompany} saved`);
     setJobCompany("");
     setJobRole("");
     setJobSalary("");
     setJobNotes("");
     setShowJobForm(false);
-    toast.success(`Tracking role at ${newJob.company}`);
   };
 
-  const handleCreateInterviewPrep = (e: React.FormEvent) => {
+  const handleCreateLearning = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!intTopic.trim()) return;
-    const newPrep: InterviewPrep = {
-      id: "prep_" + Math.random().toString(36).substring(2, 9),
-      topic: intTopic.trim(),
-      type: intType,
-      status: intStatus,
-      notes: intNotes.trim()
-    };
-    setInterviewPreps(prev => [newPrep, ...prev]);
-    setIntTopic("");
-    setIntNotes("");
-    setShowIntForm(false);
-    toast.success(`Study deck added: "${newPrep.topic}"`);
-  };
+    if (!learnTitle.trim()) return;
 
-  const deleteJob = (id: string) => {
-    setJobApplications(prev => prev.filter(j => j.id !== id));
-    toast.info("Application deleted");
-  };
-
-  const updateJobStage = (id: string, stage: JobApplication["stage"]) => {
-    setJobApplications(prev => prev.map(j => j.id === id ? { ...j, stage } : j));
-    toast.success(`Pipeline stage updated to ${stage}`);
-  };
-
-  const deletePrep = (id: string) => {
-    setInterviewPreps(prev => prev.filter(p => p.id !== id));
-    toast.info("Study item removed");
-  };
-
-  const updatePrepStatus = (id: string, status: InterviewPrep["status"]) => {
-    setInterviewPreps(prev => prev.map(p => p.id === id ? { ...p, status } : p));
-    toast.success(`Confidence score set to ${status}`);
-  };
-
-  const handleAddProjTask = (projId: string) => {
-    const input = projectTaskInput[projId];
-    if (!input || !input.trim()) return;
-    addTask({
-      title: input.trim(),
-      description: "Project Sprints Layer",
-      due_date: new Date().toISOString().split("T")[0],
-      priority: "medium",
-      tags: ["Sprint"],
-      status: "Todo",
-      estimated_time: 1,
-      actual_time: 0,
-      project_id: projId
+    await addLearningTopic({
+      title: learnTitle.trim(),
+      description: learnDesc.trim() || "Active Study Module",
+      target_hours: Number(learnTargetHours) || 10,
     });
-    setProjectTaskInput(prev => ({ ...prev, [projId]: "" }));
-  };
 
-  // Compute coding task values
-  const codingTasks = tasks.filter(t => t.tags.includes("Code") || t.tags.includes("Sprint"));
-  const codingTaskCount = codingTasks.length;
-  const completedCodingCount = codingTasks.filter(t => t.status === "Complete").length;
+    audioService.playSuccessChime();
+    toast.success(`Topic "${learnTitle}" added`);
+    setLearnTitle("");
+    setLearnDesc("");
+    setShowLearnForm(false);
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 font-sans text-[#2E2E2E]">
-      
-      {/* Upper Brand panel */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-[#6F4E37]/10 p-6 rounded-3xl shadow-sm">
+    <div className="space-y-8 font-sans">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] bg-[#6F4E37]/5 px-2.5 py-1 rounded-md text-[#6F4E37] font-mono tracking-widest font-black uppercase">
-            CreamFlow Engineering Hub
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#D4A017]">
+            ENGINEERING & CAREER MATRIX
           </span>
-          <h1 className="text-3xl sm:text-4xl font-serif font-black text-[#6F4E37] tracking-tight mt-2.5">
-            Developer Matrix <span className="font-sans text-xs italic text-[#7A6F62] ml-1">Engineering and Career Ledger</span>
+          <h1 className="text-2xl sm:text-3xl font-serif font-black text-[#6F4E37] tracking-tight flex items-center gap-2">
+            Developer Matrix ☕
           </h1>
-          <p className="text-xs text-[#7A6F62] mt-1 font-medium leading-relaxed">
-            Record actual coding session hours, maintain your recruitment pipeline funnel, and test algorithmic memory thresholds.
+          <p className="text-xs text-[#7A6F62]">
+            Monitor technical development hours, skill mastery paths, portfolio projects, and career targets.
           </p>
         </div>
 
-        {/* Global Stats indicators */}
-        <div className="flex gap-3">
-          <div className="bg-[#FFF8E7] border border-[#6F4E37]/15 px-4 py-2 rounded-2xl text-center shadow-sm">
-            <span className="text-[9px] text-[#7A6F62] uppercase tracking-wider font-mono block font-bold">Total Sprints</span>
-            <span className="text-sm font-bold text-[#6F4E37] font-mono">
-              {completedCodingCount} of {codingTaskCount} Done
-            </span>
-          </div>
-
-          <div className="bg-[#FFF8E7] border border-[#6F4E37]/15 px-4 py-2 rounded-2xl text-center shadow-sm">
-            <span className="text-[9px] text-[#7A6F62] uppercase tracking-wider font-mono block font-bold">Applications</span>
-            <span className="text-sm font-bold text-[#D4A017] font-mono">
-              {jobApplications.length} tracked
-            </span>
-          </div>
+        {/* Fluid Tab Selector */}
+        <div className="flex p-1 bg-white rounded-2xl border border-[#6F4E37]/15 shadow-xs relative">
+          {[
+            { id: "overview", label: "Overview", icon: Cpu },
+            { id: "projects", label: "Projects", icon: Layers },
+            { id: "learning", label: "Study Topics", icon: BookOpen },
+            { id: "jobs", label: "Job Tracker", icon: Briefcase },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`relative px-3.5 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 ${
+                  isActive ? "text-white" : "text-[#7A6F62] hover:text-[#6F4E37]"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="matrixTab"
+                    transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                    className="absolute inset-0 bg-[#6F4E37] rounded-xl -z-10 shadow-xs"
+                  />
+                )}
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Sub Tabs */}
-      <div className="flex gap-1 bg-[#FFF8E7] p-1.5 rounded-2xl border border-[#6F4E37]/10 w-max overflow-x-auto max-w-full">
-        <button
-          onClick={() => setActiveTab("overview")}
-          className={`px-4 py-2.5 rounded-xl text-xs uppercase font-bold tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === "overview" ? "bg-[#6F4E37] text-white shadow-sm" : "text-[#7A6F62] hover:text-[#6F4E37]"
-          }`}
-        >
-          Overview Core 🧠
-        </button>
+      {/* 1. OVERVIEW & METRICS BENTO GRID */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <SpotlightCard tiltEffect className="p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7A6F62]">
+              Coding Hours
+            </span>
+            <div className="p-2 rounded-xl bg-[#6F4E37]/10 text-[#6F4E37]">
+              <Terminal className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-1">
+            <span className="text-3xl font-serif font-black text-[#6F4E37]">
+              <AnimatedNumber
+                value={developerMetrics?.coding_hours || 0}
+                format={(n) => n.toFixed(1)}
+              />
+            </span>
+            <span className="text-xs text-[#7A6F62] font-semibold">hrs logged</span>
+          </div>
+        </SpotlightCard>
 
-        <button
-          onClick={() => setActiveTab("projects")}
-          className={`px-4 py-2.5 rounded-xl text-xs uppercase font-bold tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === "projects" ? "bg-[#6F4E37] text-white shadow-sm" : "text-[#7A6F62] hover:text-[#6F4E37]"
-          }`}
-        >
-          Code Milestones 📂
-        </button>
+        <SpotlightCard tiltEffect className="p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7A6F62]">
+              Learning Hours
+            </span>
+            <div className="p-2 rounded-xl bg-[#6F4E37]/10 text-[#6F4E37]">
+              <BookOpen className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-1">
+            <span className="text-3xl font-serif font-black text-[#6F4E37]">
+              <AnimatedNumber
+                value={developerMetrics?.learning_hours || 0}
+                format={(n) => n.toFixed(1)}
+              />
+            </span>
+            <span className="text-xs text-[#7A6F62] font-semibold">hrs study</span>
+          </div>
+        </SpotlightCard>
 
-        <button
-          onClick={() => setActiveTab("jobs")}
-          className={`px-4 py-2.5 rounded-xl text-xs uppercase font-bold tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === "jobs" ? "bg-[#6F4E37] text-white shadow-sm" : "text-[#7A6F62] hover:text-[#6F4E37]"
-          }`}
-        >
-          Pipeline Funnel 💼
-        </button>
+        <SpotlightCard tiltEffect className="p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7A6F62]">
+              Active Projects
+            </span>
+            <div className="p-2 rounded-xl bg-[#6F4E37]/10 text-[#6F4E37]">
+              <Layers className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-1">
+            <span className="text-3xl font-serif font-black text-[#6F4E37]">
+              <AnimatedNumber value={projects.length} />
+            </span>
+            <span className="text-xs text-[#7A6F62] font-semibold">in sprint</span>
+          </div>
+        </SpotlightCard>
 
-        <button
-          onClick={() => setActiveTab("interviews")}
-          className={`px-4 py-2.5 rounded-xl text-xs uppercase font-bold tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === "interviews" ? "bg-[#6F4E37] text-white shadow-sm" : "text-[#7A6F62] hover:text-[#6F4E37]"
-          }`}
-        >
-          Interview Prep 💻
-        </button>
+        <SpotlightCard tiltEffect className="p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#7A6F62]">
+              Applications
+            </span>
+            <div className="p-2 rounded-xl bg-[#6F4E37]/10 text-[#6F4E37]">
+              <Briefcase className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-1">
+            <span className="text-3xl font-serif font-black text-[#6F4E37]">
+              <AnimatedNumber value={jobApplications.length} />
+            </span>
+            <span className="text-xs text-[#7A6F62] font-semibold">pipelines</span>
+          </div>
+        </SpotlightCard>
       </div>
 
-      {/* Tab Contents */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -15 }}
-          transition={{ duration: 0.2 }}
-        >
-          
-          {/* TAB 0: OVERVIEW & HOUR LOG FORM */}
-          {activeTab === "overview" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Hour Accumulator card form */}
-              <div className="bg-white rounded-3xl p-6 border border-[#6F4E37]/10 shadow-sm space-y-4">
-                <div>
-                  <h3 className="text-md font-serif font-black text-[#6F4E37]">Log Engineering Energy</h3>
-                  <p className="text-xs text-[#7A6F62]">Add raw coding hours or algorithm training times into your dynamic audit profiles.</p>
-                </div>
-
-                <form onSubmit={handleHourSubmit} className="space-y-4 pt-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">Log Additional Coding Hours</label>
-                    <input
-                      type="number"
-                      min="0.5"
-                      step="0.5"
-                      value={addCodingHours}
-                      onChange={(e) => setAddCodingHours(Number(e.target.value))}
-                      className="w-full text-xs font-bold bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs uppercase font-bold tracking-wider text-[#6F4E37]">Log Study / Lecture Hours</label>
-                    <input
-                      type="number"
-                      min="0.5"
-                      step="0.5"
-                      value={addLearningHours}
-                      onChange={(e) => setAddLearningHours(Number(e.target.value))}
-                      className="w-full text-xs font-bold bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-[#6F4E37] hover:bg-[#5a3e2b] text-white font-serif font-black rounded-xl text-xs shadow transition cursor-pointer"
-                  >
-                    Lock Session Metrics ☕
-                  </button>
-                </form>
-              </div>
-
-              {/* Developer stats display blocks */}
-              <div className="md:col-span-2 space-y-6">
-                
-                <div className="bg-white rounded-3xl p-6 border border-[#6F4E37]/10 shadow-sm grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-[#FFF8E7]/30 rounded-2xl border border-[#6F4E37]/5 text-center">
-                    <span className="text-[10px] text-[#7A6F62] uppercase tracking-wider block font-bold">Total Code Sprints Run</span>
-                    <span className="text-3xl font-serif font-black text-[#6F4E37] block mt-2">{developerMetrics.coding_hours}h</span>
-                    <p className="text-[9px] text-[#7A6F62] mt-1">Accumulated across deep focus sessions.</p>
-                  </div>
-
-                  <div className="p-4 bg-[#FFF8E7]/30 rounded-2xl border border-[#6F4E37]/5 text-center">
-                    <span className="text-[10px] text-[#7A6F62] uppercase tracking-wider block font-bold">Target Study Prep</span>
-                    <span className="text-3xl font-serif font-black text-[#6F4E37] block mt-2">{developerMetrics.learning_hours}h</span>
-                    <p className="text-[9px] text-[#7A6F62] mt-1 font-semibold text-[#D4A017]">Algorithmic masteries tracker.</p>
-                  </div>
-                </div>
-
-                <div className="p-5 bg-white border border-[#D4A017]/20 rounded-2xl flex gap-3 shadow-inner">
-                  <Sparkles className="w-5 h-5 text-[#D4A017] flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-[#6F4E37]">Proactive Portfolio Builder Blueprint</h4>
-                    <p className="text-xs text-[#7A6F62] leading-relaxed">
-                      Hiring managers prioritize candidates who treat learning like a scalable product. Maintain your <strong>Developer Matrix</strong>, log hours with deep focus blocks, and present physical proof-of-hours statistics in selection rounds.
-                    </p>
-                  </div>
-                </div>
-
-              </div>
+      {/* 2. TAB VIEWS */}
+      {/* Tab: Overview (Hour Logger + Summary) */}
+      {activeTab === "overview" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Quick Hours Logger */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#6F4E37]/15 shadow-sm space-y-6">
+            <div>
+              <h2 className="text-base font-serif font-bold text-[#6F4E37] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#D4A017]" />
+                <span>Log Developer Hours</span>
+              </h2>
+              <p className="text-xs text-[#7A6F62]">
+                Record manual coding and study sessions to keep your career trajectory accurate.
+              </p>
             </div>
-          )}
 
-          {/* TAB 1: CODE MILESTONES / SYSTEM ARCHITECTURE */}
-          {activeTab === "projects" && (
-            <div className="space-y-6">
-              
-              <div className="flex justify-between items-center bg-white border border-[#6F4E37]/10 p-4 rounded-2xl shadow-sm">
-                <div>
-                  <h3 className="text-sm font-serif font-black text-[#6F4E37]">Project Architecture Milestones</h3>
-                  <p className="text-xs text-[#7A6F62]">Formulate scalable side projects. Track milestones, feature phases, and code reviews.</p>
-                </div>
-
-                <button
-                  onClick={() => setShowProjForm(true)}
-                  className="px-4 py-2 text-xs bg-[#6F4E37] text-white hover:bg-[#5a3e2b] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Map Project</span>
-                </button>
+            <form onSubmit={handleHourSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-[#6F4E37] uppercase tracking-wider">
+                  Coding / Development (+{addCodingHours}h)
+                </label>
+                <input
+                  type="number"
+                  min={0.25}
+                  step={0.25}
+                  value={addCodingHours}
+                  onChange={(e) => setAddCodingHours(Number(e.target.value))}
+                  className="w-full mt-1.5 p-2.5 text-xs font-semibold bg-[#FFF8E7]/40 border border-[#6F4E37]/20 rounded-xl focus:outline-none"
+                />
               </div>
 
-              {/* Add Project Form Drawer */}
-              {showProjForm && (
-                <form onSubmit={handleCreateProject} className="p-5 bg-white rounded-3xl border border-[#6F4E37]/15 shadow space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Project Name (e.g. Distributed Chat Backend)..."
-                      value={projTitle}
-                      onChange={(e) => setProjTitle(e.target.value)}
-                      className="w-full text-xs font-bold bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                      required
-                    />
-                    <input
-                      type="date"
-                      value={projTargetDate}
-                      onChange={(e) => setProjTargetDate(e.target.value)}
-                      className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none text-[#2E2E2E]"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Overview / Technology Stack (e.g. Node, React, Redis)..."
-                    value={projOverview}
-                    onChange={(e) => setProjOverview(e.target.value)}
-                    className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                  />
-                  <div className="flex justify-end gap-2 text-xs">
-                    <button type="button" onClick={() => setShowProjForm(false)} className="px-3 py-1.5 text-[#7A6F62]">Cancel</button>
-                    <button type="submit" className="px-4 py-1.5 bg-[#6F4E37] text-white font-bold rounded-xl">Initialize</button>
-                  </div>
-                </form>
-              )}
-
-              {/* Active Project Milestones Cards list */}
-              {projects.length === 0 ? (
-                <div className="text-center py-10 bg-white/50 border border-dashed border-[#6F4E37]/15 rounded-3xl text-xs text-[#7A6F62]">
-                  No mapped projects in state. Initialize above.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {projects.map(proj => {
-                    const subtasks = tasks.filter(t => t.project_id === proj.id);
-                    const doneComps = subtasks.filter(t => t.status === "Complete").length;
-                    return (
-                      <div key={proj.id} className="bg-white p-5 rounded-3xl border border-[#6F4E37]/10 shadow-sm space-y-4 group relative">
-                        <button
-                          onClick={() => deleteProject(proj.id)}
-                          className="absolute top-4 right-4 text-[#7A6F62] hover:text-[#EF4444] opacity-0 group-hover:opacity-100 transition"
-                          title="Delete project"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        
-                        <div className="space-y-1">
-                          <h4 className="text-base font-serif font-black text-[#6F4E37]">{proj.name}</h4>
-                          {proj.description && <p className="text-xs text-[#7A6F62]">{proj.description}</p>}
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center text-[10px] uppercase font-bold text-[#7A6F62]">
-                            <span>Progress Scale</span>
-                            <span className="text-[#D4A017]">{proj.progress}%</span>
-                          </div>
-                          <div className="w-full bg-[#FFF8E7] h-1.5 rounded-full overflow-hidden">
-                            <div style={{ width: `${proj.progress}%` }} className="h-full bg-[#6F4E37] rounded-full transition-all" />
-                          </div>
-                        </div>
-
-                        {/* Checklist subtasks map */}
-                        <div className="space-y-2 pt-2">
-                          <span className="text-[10px] uppercase font-bold text-[#6F4E37] block">Sprints Checklist ({doneComps}/{subtasks.length})</span>
-                          
-                          {subtasks.length === 0 ? (
-                            <p className="text-[11px] text-[#7A6F62] italic pl-1">No feature phases mapped. Create below.</p>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {subtasks.map(s => (
-                                <div key={s.id} className="flex items-center gap-2 text-xs text-[#2E2E2E]">
-                                  <input
-                                    type="checkbox"
-                                    checked={s.status === "Complete"}
-                                    onChange={() => updateTask(s.id, { status: s.status === "Complete" ? "Todo" : "Complete" })}
-                                    className="rounded border-[#6F4E37]/30 text-[#6F4E37] focus:ring-0 cursor-pointer"
-                                  />
-                                  <span className={s.status === "Complete" ? "line-through text-[#7A6F62]" : "text-[#2E2E2E]"}>{s.title}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Quick sprint creator */}
-                        <div className="flex gap-2.5">
-                          <input
-                            type="text"
-                            placeholder="Add instant sprint phase..."
-                            value={projectTaskInput[proj.id] || ""}
-                            onChange={(e) => setProjectTaskInput(prev => ({ ...prev, [proj.id]: e.target.value }))}
-                            className="bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl px-3 py-1.5 text-xs placeholder-[#7A6F62]/60 focus:outline-none focus:border-[#6F4E37] text-[#2E2E2E] flex-1"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleAddProjTask(proj.id)}
-                            className="px-3.5 py-1.5 bg-[#FFF8E7] rounded-xl border border-[#6F4E37]/25 text-[#6F4E37] text-[10px] uppercase font-bold tracking-wider"
-                          >
-                            + Phase
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: RECRUITMENT PIPELINE PIPES */}
-          {activeTab === "jobs" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center bg-white border border-[#6F4E37]/10 p-4 rounded-2xl shadow-sm">
-                <div>
-                  <h3 className="text-sm font-serif font-black text-[#6F4E37]">Application Funnel Pipeline</h3>
-                  <p className="text-xs text-[#7A6F62]">Keep active track of interviews, screening thresholds, salary specifications, and offers received.</p>
-                </div>
-
-                <button
-                  onClick={() => setShowJobForm(true)}
-                  className="px-4 py-2 text-xs bg-[#6F4E37] text-white hover:bg-[#5a3e2b] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Track Application</span>
-                </button>
+              <div>
+                <label className="text-xs font-bold text-[#6F4E37] uppercase tracking-wider">
+                  Study / Learning (+{addLearningHours}h)
+                </label>
+                <input
+                  type="number"
+                  min={0.25}
+                  step={0.25}
+                  value={addLearningHours}
+                  onChange={(e) => setAddLearningHours(Number(e.target.value))}
+                  className="w-full mt-1.5 p-2.5 text-xs font-semibold bg-[#FFF8E7]/40 border border-[#6F4E37]/20 rounded-xl focus:outline-none"
+                />
               </div>
 
-              {/* Add Job application form */}
-              {showJobForm && (
-                <form onSubmit={handleCreateJob} className="p-5 bg-white rounded-3xl border border-[#6F4E37]/15 shadow space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Company (e.g. Vercel, Supabase)..."
-                      value={jobCompany}
-                      onChange={(e) => setJobCompany(e.target.value)}
-                      className="w-full text-xs font-bold bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="Role (e.g. Senior Frontend)..."
-                      value={jobRole}
-                      onChange={(e) => setJobRole(e.target.value)}
-                      className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="Estimated Salary Target (Optional)..."
-                      value={jobSalary}
-                      onChange={(e) => setJobSalary(e.target.value)}
-                      className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                    />
-                  </div>
-                  <textarea
-                    placeholder="Interview checklist, logs, referral details, system study topics..."
-                    value={jobNotes}
-                    onChange={(e) => setJobNotes(e.target.value)}
-                    className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                    rows={2}
-                  />
-                  <div className="flex justify-end gap-2 text-xs">
-                    <button type="button" onClick={() => setShowJobForm(false)} className="px-3 py-1.5 text-[#7A6F62]">Cancel</button>
-                    <button type="submit" className="px-4 py-1.5 bg-[#6F4E37] text-white font-bold rounded-xl">Track Role</button>
-                  </div>
-                </form>
-              )}
+              <MagneticButton
+                type="submit"
+                className="w-full py-3 bg-[#6F4E37] hover:bg-[#5a3e2b] text-white text-xs font-serif font-bold rounded-xl shadow-md transition cursor-pointer"
+              >
+                Log Developer Sprint ☕
+              </MagneticButton>
+            </form>
+          </div>
 
-              {/* Column Kanban style setup */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {(["Applied", "Interview", "Offer", "Rejected"] as const).map(stage => {
-                  const items = jobApplications.filter(j => j.stage === stage);
+          {/* Project & Learning Highlights */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#6F4E37]/15 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-serif font-bold text-[#6F4E37]">
+                  Active Engineering Sprints
+                </h3>
+                <span className="text-xs text-[#6F4E37] font-semibold font-mono">
+                  {projects.length} Total
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {projects.map((proj) => {
+                  const projTasks = tasks.filter((t) => t.project_id === proj.id);
+                  const completed = projTasks.filter((t) => t.status === "Complete").length;
+                  const pct =
+                    projTasks.length > 0 ? Math.round((completed / projTasks.length) * 100) : 0;
+
                   return (
-                    <div key={stage} className="bg-[#FFF8E7]/35 border border-[#6F4E37]/10 p-4 rounded-3xl min-h-[400px] flex flex-col space-y-3">
-                      <div className="flex justify-between items-center border-b border-[#6F4E37]/10 pb-1.5">
-                        <span className="text-xs uppercase font-serif font-black text-[#6F4E37]">{stage}</span>
-                        <span className="text-[10px] font-mono font-bold bg-[#6F4E37]/10 text-[#6F4E37] px-2 py-0.5 rounded-md">
-                          {items.length}
-                        </span>
+                    <div
+                      key={proj.id}
+                      className="p-4 rounded-2xl bg-[#FFF8E7]/30 border border-[#6F4E37]/10 flex items-center justify-between gap-4"
+                    >
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-[#6F4E37]">{proj.name}</h4>
+                        {proj.description && (
+                          <p className="text-[11px] text-[#7A6F62] truncate mt-0.5">
+                            {proj.description}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-[#7A6F62] mt-1">
+                          {completed}/{projTasks.length} tasks finished
+                        </p>
                       </div>
 
-                      <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[420px] scrollbar-hide">
-                        {items.length === 0 ? (
-                          <div className="py-10 text-center text-[10.5px] italic text-[#7A6F62]">
-                            Stage empty
-                          </div>
-                        ) : (
-                          items.map(job => (
-                            <div key={job.id} className="bg-white p-3 rounded-2xl border border-[#6F4E37]/10 space-y-2 relative group hover:border-[#6F4E37]/30 transition shadow-sm">
-                              <button
-                                onClick={() => deleteJob(job.id)}
-                                className="absolute top-2.5 right-2 text-[#7A6F62] hover:text-[#EF4444]"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-
-                              <h5 className="text-xs font-bold text-[#6F4E37]">{job.company}</h5>
-                              <p className="text-[10.5px] text-[#7A6F62] leading-none">{job.role}</p>
-                              
-                              {job.salary && (
-                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-[#6F4E37]/5 text-[#6F4E37] font-semibold block w-max">
-                                  💵 {job.salary}
-                                </span>
-                              )}
-
-                              {job.notes && (
-                                <p className="text-[10px] text-[#7A6F62] font-medium leading-relaxed bg-[#FFF8E7]/30 p-1.5 rounded-lg border border-[#6F4E37]/5">
-                                  {job.notes}
-                                </p>
-                              )}
-
-                              <div className="pt-2 border-t border-[#6F4E37]/5">
-                                <select
-                                  value={job.stage}
-                                  onChange={(e) => updateJobStage(job.id, e.target.value as any)}
-                                  className="w-full bg-[#FFF8E7] text-[10px] font-bold text-[#6F4E37] border-none focus:ring-0 rounded-lg p-1 text-center"
-                                >
-                                  <option value="Applied">Applied</option>
-                                  <option value="Interview">Interviewing</option>
-                                  <option value="Offer">Offer</option>
-                                  <option value="Rejected">Pipeline Closed</option>
-                                </select>
-                              </div>
-                            </div>
-                          ))
-                        )}
+                      <div className="w-24 text-right flex-shrink-0">
+                        <span className="text-xs font-mono font-bold text-[#6F4E37]">{pct}%</span>
+                        <div className="w-full bg-[#6F4E37]/10 h-1.5 rounded-full overflow-hidden mt-1">
+                          <div
+                            className="bg-[#6F4E37] h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {/* TAB 3: ALGORITHM PREPARATIONS confidence */}
-          {activeTab === "interviews" && (
-            <div className="space-y-6">
-              
-              <div className="flex justify-between items-center bg-white border border-[#6F4E37]/10 p-4 rounded-2xl shadow-sm">
-                <div>
-                  <h3 className="text-sm font-serif font-black text-[#6F4E37]">Interactive Algorithm Confidence Board</h3>
-                  <p className="text-xs text-[#7A6F62]">Review System Designs, Algorithmic patterns and key data structures to present perfect analytical confidence.</p>
+      {/* Tab: Projects Detail */}
+      {activeTab === "projects" && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#6F4E37]/15 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-serif font-bold text-[#6F4E37]">Project Trackers</h2>
+              <p className="text-xs text-[#7A6F62]">Manage key project deliverables & milestones</p>
+            </div>
+            <button
+              onClick={() => setShowProjForm(!showProjForm)}
+              className="px-4 py-2 bg-[#6F4E37] text-white rounded-xl text-xs font-bold hover:bg-[#5a3e2b] transition cursor-pointer flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Project</span>
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showProjForm && (
+              <motion.form
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                onSubmit={handleCreateProject}
+                className="p-5 bg-[#FFF8E7]/50 rounded-2xl border border-[#6F4E37]/20 space-y-3"
+              >
+                <input
+                  type="text"
+                  required
+                  placeholder="Project Name..."
+                  value={projTitle}
+                  onChange={(e) => setProjTitle(e.target.value)}
+                  className="w-full p-2.5 text-xs font-semibold bg-white border border-[#6F4E37]/20 rounded-xl focus:outline-none"
+                />
+                <textarea
+                  rows={2}
+                  placeholder="Overview / Goal of project..."
+                  value={projOverview}
+                  onChange={(e) => setProjOverview(e.target.value)}
+                  className="w-full p-2.5 text-xs font-medium bg-white border border-[#6F4E37]/20 rounded-xl focus:outline-none resize-none"
+                />
+                <textarea
+                  rows={2}
+                  placeholder="Milestones (one per line)..."
+                  value={projMilestones}
+                  onChange={(e) => setProjMilestones(e.target.value)}
+                  className="w-full p-2.5 text-xs font-medium bg-white border border-[#6F4E37]/20 rounded-xl focus:outline-none resize-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowProjForm(false)}
+                    className="px-3 py-1.5 text-xs text-[#7A6F62] hover:text-[#6F4E37]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-[#6F4E37] text-white text-xs font-bold rounded-xl"
+                  >
+                    Save Project
+                  </button>
                 </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
 
-                <button
-                  onClick={() => setShowIntForm(true)}
-                  className="px-4 py-2 text-xs bg-[#6F4E37] text-white hover:bg-[#5a3e2b] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Create topic Tracker</span>
-                </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {projects.map((proj) => (
+              <div
+                key={proj.id}
+                className="p-5 rounded-2xl bg-[#FFF8E7]/30 border border-[#6F4E37]/15 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-[#6F4E37]">{proj.name}</h3>
+                  <button
+                    onClick={() => deleteProject(proj.id)}
+                    className="text-[#7A6F62] hover:text-red-500 transition p-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {proj.description && (
+                  <p className="text-xs text-[#7A6F62]">{proj.description}</p>
+                )}
+
+                {proj.milestones && proj.milestones.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-[#6F4E37]/10">
+                    <span className="text-[10px] uppercase font-bold text-[#6F4E37]">
+                      Milestones
+                    </span>
+                    {proj.milestones.map((m, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs text-[#2E2E2E]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#D4A017]" />
+                        <span>{m}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-              {/* Add topic form */}
-              {showIntForm && (
-                <form onSubmit={handleCreateInterviewPrep} className="p-5 bg-white rounded-3xl border border-[#6F4E37]/15 shadow space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Algorithm topic (e.g. MapReduce systems)..."
-                      value={intTopic}
-                      onChange={(e) => setIntTopic(e.target.value)}
-                      className="w-full text-xs font-bold bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                      required
-                    />
-                    <select
-                      value={intType}
-                      onChange={(e) => setIntType(e.target.value as any)}
-                      className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none text-[#2E2E2E]"
-                    >
-                      <option value="System Design">System Design</option>
-                      <option value="Algorithms">Algorithms</option>
-                      <option value="Behavioral">Behavioral (STAR)</option>
-                      <option value="Frontend">Frontend Core</option>
-                      <option value="DB / SQL">DB & Query Systems</option>
-                    </select>
-
-                    <select
-                      value={intStatus}
-                      onChange={(e) => setIntStatus(e.target.value as any)}
-                      className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none text-[#2E2E2E]"
-                    >
-                      <option value="Review Required">Review Required 🔴</option>
-                      <option value="Familiar">Familiar 🟡</option>
-                      <option value="Mastered">Mastered 🟢</option>
-                    </select>
-                  </div>
-                  <textarea
-                    placeholder="Implementation code structures, notes or analysis parameters..."
-                    value={intNotes}
-                    onChange={(e) => setIntNotes(e.target.value)}
-                    className="w-full text-xs bg-[#FFF8E7]/40 border border-[#6F4E37]/15 rounded-xl p-3 focus:outline-none"
-                    rows={2}
-                  />
-                  <div className="flex justify-end gap-2 text-xs">
-                    <button type="button" onClick={() => setShowIntForm(false)} className="px-3 py-1.5 text-[#7A6F62]">Cancel</button>
-                    <button type="submit" className="px-4 py-1.5 bg-[#6F4E37] text-white font-bold rounded-xl">Map Concept</button>
-                  </div>
-                </form>
-              )}
-
-              {/* Prep decks display */}
-              {interviewPreps.length === 0 ? (
-                <div className="text-center py-10 bg-white/50 border border-dashed border-[#6F4E37]/15 rounded-3xl text-xs text-[#7A6F62]">
-                  No tracked algorithm topics mapped. Add above.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {interviewPreps.map(prep => (
-                    <div key={prep.id} className="bg-white p-4 rounded-3xl border border-[#6F4E37]/10 shadow-sm space-y-3 group relative">
-                      <button
-                        onClick={() => deletePrep(prep.id)}
-                        className="absolute top-4 right-4 text-[#7A6F62] hover:text-[#EF4444]"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[9px] uppercase font-bold text-[#D4A017] px-2 py-0.5 rounded-md bg-[#6F4E37]/5 border border-[#6F4E37]/10">
-                          {prep.type}
-                        </span>
-                        
-                        <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase ${
-                          prep.status === "Review Required"
-                            ? "bg-[#EF4444]/15 text-[#EF4444]"
-                            : prep.status === "Familiar"
-                            ? "bg-[#F59E0B]/15 text-[#F59E0B]"
-                            : "bg-[#4CAF50]/15 text-[#4CAF50]"
-                        }`}>
-                          {prep.status}
-                        </span>
-                      </div>
-
-                      <h4 className="text-xs font-bold text-[#6F4E37]">{prep.topic}</h4>
-                      {prep.notes && (
-                        <p className="text-[11px] text-[#7A6F62] bg-[#FFF8E7]/30 p-2 rounded-xl border border-[#6F4E37]/5 leading-relaxed font-semibold">
-                          {prep.notes}
-                        </p>
-                      )}
-
-                      {/* Mastery selector buttons */}
-                      <div className="flex items-center justify-between border-t border-[#6F4E37]/5 pt-3">
-                        <span className="text-[9px] font-mono text-[#7A6F62]">Recalibrate Confidence Tracker:</span>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => updatePrepStatus(prep.id, "Review Required")}
-                            className="px-2 py-0.5 rounded text-[8px] uppercase font-bold text-[#EF4444] bg-[#EF4444]/5 hover:bg-[#EF4444]/10"
-                          >
-                            Review
-                          </button>
-                          <button
-                            onClick={() => updatePrepStatus(prep.id, "Familiar")}
-                            className="px-2 py-0.5 rounded text-[8px] uppercase font-bold text-[#F59E0B] bg-[#F59E0B]/5 hover:bg-[#F59E0B]/10"
-                          >
-                            Familiar
-                          </button>
-                          <button
-                            onClick={() => updatePrepStatus(prep.id, "Mastered")}
-                            className="px-2 py-0.5 rounded text-[8px] uppercase font-bold text-[#4CAF50] bg-[#4CAF50]/5 hover:bg-[#4CAF50]/10"
-                          >
-                            Optimal
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
+      {/* Tab: Study / Learning Topics */}
+      {activeTab === "learning" && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#6F4E37]/15 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-serif font-bold text-[#6F4E37]">Learning Modules</h2>
+              <p className="text-xs text-[#7A6F62]">
+                Structure tech study paths and track logged hours vs targets
+              </p>
             </div>
-          )}
+            <button
+              onClick={() => setShowLearnForm(!showLearnForm)}
+              className="px-4 py-2 bg-[#6F4E37] text-white rounded-xl text-xs font-bold hover:bg-[#5a3e2b] transition cursor-pointer flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Topic</span>
+            </button>
+          </div>
 
-        </motion.div>
-      </AnimatePresence>
+          <AnimatePresence>
+            {showLearnForm && (
+              <motion.form
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                onSubmit={handleCreateLearning}
+                className="p-5 bg-[#FFF8E7]/50 rounded-2xl border border-[#6F4E37]/20 space-y-3"
+              >
+                <input
+                  type="text"
+                  required
+                  placeholder="Skill / Topic Title (e.g., Rust Concurrency, GraphQL Systems)..."
+                  value={learnTitle}
+                  onChange={(e) => setLearnTitle(e.target.value)}
+                  className="w-full p-2.5 text-xs font-semibold bg-white border border-[#6F4E37]/20 rounded-xl focus:outline-none"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="Target Hours (e.g., 20)..."
+                  value={learnTargetHours}
+                  onChange={(e) => setLearnTargetHours(Number(e.target.value))}
+                  className="w-full p-2.5 text-xs font-semibold bg-white border border-[#6F4E37]/20 rounded-xl focus:outline-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowLearnForm(false)}
+                    className="px-3 py-1.5 text-xs text-[#7A6F62]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-[#6F4E37] text-white text-xs font-bold rounded-xl"
+                  >
+                    Save Topic
+                  </button>
+                </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {learningTopics.map((lt) => {
+              const pct = Math.min(100, Math.round((lt.logged_hours / lt.target_hours) * 100));
+
+              return (
+                <div
+                  key={lt.id}
+                  className="p-5 rounded-2xl bg-[#FFF8E7]/30 border border-[#6F4E37]/15 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-[#6F4E37]">{lt.title}</h3>
+                    <button
+                      onClick={() => deleteLearningTopic(lt.id)}
+                      className="text-[#7A6F62] hover:text-red-500 transition p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-[#7A6F62]">
+                    <span>
+                      {lt.logged_hours} / {lt.target_hours} Hours
+                    </span>
+                    <span className="font-mono font-bold text-[#6F4E37]">{pct}%</span>
+                  </div>
+
+                  <div className="w-full bg-[#6F4E37]/10 h-2 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="bg-[#6F4E37] h-full rounded-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-[#6F4E37]/10">
+                    <button
+                      onClick={() => updateLearningHours(lt.id, 1)}
+                      className="px-3 py-1 bg-white border border-[#6F4E37]/20 rounded-xl text-xs font-bold text-[#6F4E37] hover:bg-[#FFF8E7] transition cursor-pointer"
+                    >
+                      +1h Study
+                    </button>
+                    <span className="text-[10px] font-bold text-[#D4A017] uppercase tracking-wider ml-auto">
+                      {lt.status}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Job Applications */}
+      {activeTab === "jobs" && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#6F4E37]/15 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-serif font-bold text-[#6F4E37]">Career Opportunities</h2>
+              <p className="text-xs text-[#7A6F62]">
+                Track interview stages, companies, and offer negotiations
+              </p>
+            </div>
+            <button
+              onClick={() => setShowJobForm(!showJobForm)}
+              className="px-4 py-2 bg-[#6F4E37] text-white rounded-xl text-xs font-bold hover:bg-[#5a3e2b] transition cursor-pointer flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Company</span>
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showJobForm && (
+              <motion.form
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                onSubmit={handleCreateJob}
+                className="p-5 bg-[#FFF8E7]/50 rounded-2xl border border-[#6F4E37]/20 space-y-3"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Company Name..."
+                    value={jobCompany}
+                    onChange={(e) => setJobCompany(e.target.value)}
+                    className="p-2.5 text-xs font-semibold bg-white border border-[#6F4E37]/20 rounded-xl focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Role (e.g., Senior Frontend Architect)..."
+                    value={jobRole}
+                    onChange={(e) => setJobRole(e.target.value)}
+                    className="p-2.5 text-xs font-semibold bg-white border border-[#6F4E37]/20 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowJobForm(false)}
+                    className="px-3 py-1.5 text-xs text-[#7A6F62]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-[#6F4E37] text-white text-xs font-bold rounded-xl"
+                  >
+                    Save Pipeline
+                  </button>
+                </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
+
+          <div className="space-y-3">
+            {jobApplications.length === 0 ? (
+              <div className="py-12 text-center text-xs text-[#7A6F62]">
+                No career pipelines logged yet. Click &ldquo;Add Company&rdquo; to begin.
+              </div>
+            ) : (
+              jobApplications.map((job) => (
+                <div
+                  key={job.id}
+                  className="p-4 rounded-2xl bg-[#FFF8E7]/30 border border-[#6F4E37]/15 flex items-center justify-between"
+                >
+                  <div>
+                    <h4 className="text-xs font-bold text-[#6F4E37]">{job.company}</h4>
+                    <p className="text-[11px] text-[#7A6F62]">{job.role}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-[#6F4E37]/10 text-[#6F4E37]">
+                      {job.stage}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setJobApplications((prev) => prev.filter((j) => j.id !== job.id))
+                      }
+                      className="text-[#7A6F62] hover:text-red-500 p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

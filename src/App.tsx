@@ -74,14 +74,14 @@ export default function App() {
           </Router>
           <Toaster 
             position="bottom-right" 
-            theme="dark" 
+            theme="light" 
             closeButton
             toastOptions={{
               style: {
-                background: '#0d0f12',
-                border: '1px solid rgba(197, 165, 114, 0.2)',
-                color: '#fdfaf5',
-                fontFamily: 'sans-serif'
+                background: '#FFFFFF',
+                border: '1px solid rgba(111, 78, 55, 0.15)',
+                color: '#2E2E2E',
+                fontFamily: 'inherit'
               }
             }} 
           />

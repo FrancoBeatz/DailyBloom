@@ -65,6 +65,8 @@ interface SidebarProps {
   currentPage: string;
   collapsed: boolean;
   onToggle: () => void;
+  onOpenCommandPalette?: () => void;
+  onOpenQuickCapture?: (tab?: "task" | "project" | "goal" | "habit" | "learning") => void;
 }
 
 export default function Sidebar({ currentPage, collapsed, onToggle }: SidebarProps) {
